@@ -1,4 +1,5 @@
 aioredis
-discord.py @ git+https://github.com/Rapptz/discord.py@rewrite
+discord.py
 jishaku
 pillow
+ruamel.yaml

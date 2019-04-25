@@ -11,7 +11,7 @@ from bot import Cog
 
 
 def _make_color_command(name, modifier, **kwargs):
-    @commands.command(name, help=f'{name.title()}fy an image.', **kwargs)
+    @commands.command(name, help=f'{name.title()} an image.', **kwargs)
     async def command(self, ctx, *, who: typing.Union[discord.Member, discord.PartialEmoji, LinkConverter] = None):
 
         if ctx.message.attachments:
@@ -31,7 +31,7 @@ def _make_color_command(name, modifier, **kwargs):
         await ctx.bot.redis.rpush('blurple:queue', json.dumps(data))
 
         # Signal that the request has been queued
-        await ctx.message.add_reaction('\N{FLOPPY DISK}')
+        await ctx.message.add_reaction(self.bot.config['queue_emoji'])
 
     return command
 

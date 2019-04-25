@@ -20,6 +20,8 @@ services:
       - redis
     volumes:
       - ./:/app
+    environment:
+      - WORKER_COUNT=${WORKER_COUNT}
 
   redis:
     image: redis:5-alpine
