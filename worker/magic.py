@@ -25,8 +25,6 @@ def dark(x):
 MODIFIERS = {
     'light': light,
     'dark': dark,
-    'orange': orange,
-    'gay': gay,
 }
 
 
