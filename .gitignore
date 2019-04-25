@@ -1,7 +1,11 @@
 ## Project
 
-config.json
+.env
+config.yaml
 
+# Rina
+run.bat
+run2.bat
 
 ## Editors
 
@@ -134,5 +138,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-run.bat
-run2.bat

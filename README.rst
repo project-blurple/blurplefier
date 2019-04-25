@@ -13,13 +13,15 @@ The bot can either be run with docker-compose or using another process manager, 
 First you have to create a config file with credentials, you can simply copy the ``example-config.json`` and
 edit it with your own values, then save it as ``config.json``.
 
+Afterwards you'll want to adjust the ``WORKER_COUNT`` environment variable, if using docker you can copy the
+``example.env`` file, edit it and save it as ``.env``.
+
 To run the bot with docker see these steps:
 
 .. code-block :: bash
 
     docker build -t blurplefy .
 
-    # You can adjust how many workers you want to run here
     docker-compose up --scale workers=2
 
 

@@ -1,0 +1,17 @@
+queue_emoji: 🤸
+
+bot:
+  prefix: !
+  owner_id: 69198249432449024
+
+  token: beep.boop.secret
+
+workers:
+  - first.worker.token
+  - second.worker.token
+  # Add as many as needed
+
+redis:
+  address:
+    - redis
+    - 6379
