@@ -26,7 +26,7 @@ def _make_color_command(name, modifier, **kwargs):
             else:
                 url = who.avatar_url
 
-        data = {'modifier': modifier, 'url': str(url), 'channel': ctx.channel.id, 'requester': ctx.author.id}
+        data = {'modifier': modifier, 'url': str(url), 'channel': ctx.channel.id, 'requester': ctx.author.id, 'message': ctx.message.id}
 
         await ctx.bot.redis.rpush('blurple:queue', json.dumps(data))
 

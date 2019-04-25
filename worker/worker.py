@@ -73,6 +73,7 @@ class Worker:
     async def run_job(self, data):
         user_id = data['requester']
         channel_id = data['channel']
+        message_id = data['message']
 
         try:
             image = await self.http.get_from_cdn(data['url'])
@@ -95,6 +96,7 @@ class Worker:
         try:
             msg = f'Here is your image <@!{user_id}>!'
             await self.http.send_files(channel_id, content=msg, files=(result,))
+            await self.http.remove_own_reaction(message_id, channel_id, '\N{FLOPPY DISK}')
         except discord.HTTPException:
             await self._send_error(
                 f'I couldn\'t upload your image to Discord, it may be too big <@!{user_id}>!', channel_id
