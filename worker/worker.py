@@ -139,7 +139,7 @@ class Worker:
             return
 
         try:
-            result = convert_image(image, data['modifier'])
+            result = convert_image(image, data['modifier'], data['method'], data['variation'])
         except Exception:
             await self._send_error(f'I failed to convert your image <@!{user_id}>.', channel_id)
             return

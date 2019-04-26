@@ -17,3 +17,17 @@ class LinkConverter(commands.Converter):
             await asyncio.sleep(.5)
 
         raise commands.BadArgument('Discord proxy image did not load in time.')
+
+
+class FlagConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        if not argument.startswith('--'):
+            raise commands.BadArgument('Not a valid flag!')
+        return argument
+
+
+class FlagConverter2(commands.Converter):
+    async def convert(self, ctx, argument):
+        if not argument.startswith('++'):
+            raise commands.BadArgument('Not a valid flag!')
+        return argument

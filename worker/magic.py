@@ -28,7 +28,7 @@ MODIFIERS = {
 }
 
 
-def convert_image(image, modifier):
+def convert_image(image, modifier, method, variation):
     try:
         converter = MODIFIERS[modifier]
     except KeyError:
