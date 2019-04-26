@@ -46,7 +46,7 @@ class Worker:
     def with_config(cls, path='config.yaml'):
         """Create a bot instance with a Config."""
 
-        with open(path) as f:
+        with open(path, encoding='utf-8') as f:
             data = ruamel.yaml.safe_load(f)
 
         return cls(data)
@@ -94,6 +94,7 @@ class Worker:
                 if await self.redis.execute('SET', f'blurple:worker:{worker_id}', ':ablobwave:', 'NX', 'EX', '30'):
                     self.worker_id = worker_id
                     self.token = self.config['workers'][worker_id]
+                    break
 
             if self.token is None:
                 log.warning('Failed to claim worker ID, retrying in 10 seconds ..')
