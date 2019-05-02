@@ -12,7 +12,7 @@ from bot import Cog
 
 def _make_color_command(name, modifier, **kwargs):
     @commands.command(name, help=f'{name.title()} an image.', **kwargs)
-    async def command(self, ctx, method: commands.Greedy[FlagConverter] = [None], variation: commands.Greedy[FlagConverter2] = [None], *,  who: typing.Union[discord.Member, discord.PartialEmoji, LinkConverter] = None):
+    async def command(self, ctx, method: typing.Optional[FlagConverter] = None, variations: commands.Greedy[FlagConverter2] = [None], *,  who: typing.Union[discord.Member, discord.PartialEmoji, LinkConverter] = None):
 
         if ctx.message.attachments:
             url = ctx.message.attachments[0].proxy_url
@@ -26,12 +26,14 @@ def _make_color_command(name, modifier, **kwargs):
             else:
                 url = who.avatar_url
 
-        data = {'modifier': modifier, 'method': method[0], 'variation': variation[0], 'url': str(url), 'channel': ctx.channel.id, 'requester': ctx.author.id, 'message': ctx.message.id}
-
-        await ctx.bot.redis.rpush('blurple:queue', json.dumps(data))
+        data = {'modifier': modifier, 'method': method, 'variation': variations, 'url': str(url), 'channel': ctx.channel.id, 'requester': ctx.author.id, 'message': ctx.message.id}
 
         # Signal that the request has been queued
         await ctx.message.add_reaction(self.bot.config['queue_emoji'])
+
+        await ctx.bot.redis.rpush('blurple:queue', json.dumps(data))
+
+
 
     return command
 
