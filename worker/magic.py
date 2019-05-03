@@ -292,25 +292,44 @@ def convert_image(image, modifier, method, variations):
     with Image.open(io.BytesIO(image)) as img:
         if img.format == "GIF":
             frames = []
+            durations = []
+            try:
+                loop = img.info['loop']
+            except KeyError:
+                loop = None
+
             minimum = 256
             maximum = 0
-            transparency = img.info['transparency']
-            loop = img.info['loop']
+
             for imgframe in ImageSequence.Iterator(img):
                 frame = imgframe.convert('LA')
-                frame.info['duration'] = imgframe.info['duration']
+
                 if frame.getextrema()[0][0] < minimum:
                     minimum = frame.getextrema()[0][0]
+
                 if frame.getextrema()[0][1] > maximum:
                     maximum = frame.getextrema()[0][1]
+
             for frame in ImageSequence.Iterator(img):
                 new_frame = method_converter(frame, modifier_converter, variation_converter, maximum, minimum)
+
+                durations.append(frame.info['duration'])
                 frames.append(new_frame)
+
+            print(durations)
             out = io.BytesIO()
-            frames[0].save(out, format='GIF', append_images=frames, save_all=True, transparency=transparency, loop=loop)
+            try:
+                frames[0].save(out, format='GIF', append_images=frames[1:], save_all=True, loop=loop, duration=durations)
+            except TypeError as e:
+                print(e)
+                raise RuntimeError('Invalid GIF.')
+
             filename = f'{modifier}.gif'
+
+
         else:
             img = img.convert('LA')
+
             minimum = img.getextrema()[0][0]
             maximum = img.getextrema()[0][1]
 
@@ -319,5 +338,6 @@ def convert_image(image, modifier, method, variations):
             out = io.BytesIO()
             img.save(out, format='png')
             filename = f'{modifier}.png'
+
     out.seek(0)
     return discord.File(out, filename=filename)

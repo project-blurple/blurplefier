@@ -140,8 +140,12 @@ class Worker:
 
         try:
             result = convert_image(image, data['modifier'], data['method'], data['variation'])
-        except Exception:
-            await self._send_error(f'I failed to convert your image <@!{user_id}>.', channel_id)
+        except RuntimeError as e:
+            await self._send_error(f'<@!{user_id}> I failed to convert your image: **{e}**', channel_id)
+            return
+        except Exception as e:
+            await self._send_error(f'<@!{user_id}> I failed to convert your image.', channel_id)
+            print(e)
             return
 
         try:
