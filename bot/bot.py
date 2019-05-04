@@ -6,7 +6,13 @@ from discord.ext import commands
 import ruamel.yaml
 
 
+async def is_blacklisted(ctx):
+    role_id = ctx.bot.config['blacklist_role']
+    return not any(r.id == role_id for r in ctx.author.roles)
+
+
 class Bot(commands.Bot):
+
     def __init__(self, config, **kwargs):
         super().__init__(
             command_prefix=config['bot']['prefix'],
@@ -22,6 +28,8 @@ class Bot(commands.Bot):
 
         for name in extensions:
             self.load_extension(name)
+
+        self.add_check(is_blacklisted)
 
     @classmethod
     def with_config(cls, path='config.yaml'):

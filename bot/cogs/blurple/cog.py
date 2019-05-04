@@ -10,9 +10,7 @@ from .converter import FlagConverter, FlagConverter2, LinkConverter
 from bot import Cog
 
 
-async def is_blacklisted(self, ctx):
-    guild = self.bot.get_guild(self.bot.config['project_blurple_guild'])
-    return guild.get_role(self.bot.config['blacklist_role']) in ctx.author.roles
+
 
 
 async def get_modifier(self, ctx):
@@ -46,9 +44,6 @@ async def get_default_blurplefier(self, ctx):
 def _make_check_command(name, **kwargs):
     @commands.command(name, help=f'{name.title()} an image to get the Blurple User role.', **kwargs)
     async def command(self, ctx, *, who: typing.Union[discord.Member, discord.PartialEmoji, LinkConverter] = None):
-
-        if await is_blacklisted(self, ctx):
-            return
 
         variation = None
 
@@ -86,9 +81,6 @@ def _make_color_command(name, modifier, **kwargs):
     async def command(self, ctx, method: typing.Optional[FlagConverter] = None,
                       variations: commands.Greedy[FlagConverter2] = [None], *,
                       who: typing.Union[discord.Member, discord.PartialEmoji, LinkConverter] = None):
-
-        if await is_blacklisted(self, ctx):
-            return
 
         if method is None:
             method = await get_default_blurplefier(self, ctx)
