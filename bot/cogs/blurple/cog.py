@@ -9,9 +9,11 @@ from discord.ext import commands
 from .converter import FlagConverter, FlagConverter2, LinkConverter
 from bot import Cog
 
+
 async def is_blacklisted(self, ctx):
     guild = self.bot.get_guild(self.bot.config['project_blurple_guild'])
     return guild.get_role(self.bot.config['blacklist_role']) in ctx.author.roles
+
 
 async def get_modifier(self, ctx):
     guild = self.bot.get_guild(self.bot.config['project_blurple_guild'])
@@ -22,6 +24,25 @@ async def get_modifier(self, ctx):
     else:
         await ctx.channel.send('You need to be a part of a team first.')
         return None
+
+
+async def get_default_blurplefier(self, ctx):
+    message = await self.bot.get_guild(self.bot.config['project_blurple_guild']).get_channel(
+        self.bot.config['blurplefier_reaction_channel']).fetch_message(self.bot.config['blurplefier_reaction_message'])
+    reactions = message.reactions
+
+    reaction = next((x for x in reactions if x.emoji == '1⃣'))
+    if len((await reaction.users().filter(lambda x: x.id == ctx.author.id).flatten())) != 0:
+        return '--blurplefy'
+
+    reaction = next((x for x in reactions if x.emoji == '2⃣'))
+    if len((await reaction.users().filter(lambda x: x.id == ctx.author.id).flatten())) != 0:
+        return '--filter'
+
+    await ctx.channel.send('You need to choose a default blurplefier first.')
+    return None
+
+
 def _make_check_command(name, **kwargs):
     @commands.command(name, help=f'{name.title()} an image to get the Blurple User role.', **kwargs)
     async def command(self, ctx, *, who: typing.Union[discord.Member, discord.PartialEmoji, LinkConverter] = None):
@@ -69,6 +90,10 @@ def _make_color_command(name, modifier, **kwargs):
         if await is_blacklisted(self, ctx):
             return
 
+        if method is None:
+            method = await get_default_blurplefier(self, ctx)
+            if method is None:
+                return
         if ctx.message.attachments:
             url = ctx.message.attachments[0].proxy_url
         elif who is None:

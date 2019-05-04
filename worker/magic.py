@@ -303,7 +303,7 @@ MODIFIERS = {
 
 }
 METHODS = {
-    None: blurplefy,
+    '--blurplefy': blurplefy,
     '--edge-detect': edge_detect,
     '--filter': blurple_filter
 }
@@ -374,7 +374,7 @@ def convert_image(image, modifier, method, variations):
             base_color_var = variation_maker(base_color_var, variation_converter)
     if method is not "--filter":
         variation_converter = base_color_var
-        
+
     with Image.open(io.BytesIO(image)) as img:
         if img.format == "GIF":
             frames = []
