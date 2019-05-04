@@ -101,13 +101,15 @@ def edge_antialiasing(img):
 
 
 def place_edges(img, edge_img, modifiers):
-    edge_img_minimum = 10  # edge_img.getextrema()[0][0]
+    edge_img_minimum = 10
     edge_img_maximum = edge_img.crop().getextrema()[0][1]
     for x in range(1, img.width - 1):
         for y in range(1, img.height - 1):
             p = img.getpixel((x, y))
             ep = edge_img.getpixel((x, y))
-                img.putpixel((x, y), edge_colorify((ep[0] - edge_img_minimum) / (edge_img_maximum - edge_img_minimum), modifiers['colors'], p))
+            if (ep[0] > edge_img_minimum):
+                img.putpixel((x, y), edge_colorify((ep[0] - edge_img_minimum) / (edge_img_maximum - edge_img_minimum),
+                                                   modifiers['colors'], p))
     return img
 
 
@@ -174,6 +176,13 @@ def edge_colorify(x, colors, cur_color):
     return tuple(f3(x, i, colors, cur_color) for i in range(3))
 
 
+def remove_alpha(img, bg):
+    alpha = img.convert('RGBA').getchannel('A')
+    background = Image.new("RGBA", img.size, bg)
+    background.paste(img, mask=alpha)
+    return background
+
+
 def blurple_filter(img, modifier, variation, maximum, minimum):
     img = img.convert('LA')
     pixels = img.getdata()
@@ -212,6 +221,14 @@ def variation_maker(base, var):
         base3 = max(min(base[2] + var[2], 1), 0)
         base4 = max(min(base[3] + var[3], 1), 0)
     return base1, base2, base3, base4
+
+
+def invert_colors(colors):
+    return list(reversed(colors))
+
+
+def shift_colors(colors):
+    return [colors[2], colors[0], colors[1]]
 
 
 def interpolate_colors(color1, color2, x):
@@ -313,12 +330,20 @@ VARIATIONS = {
     '++classic': (.15, -.15, .15, -.15),
     '++less-gradient': (.05, -.05, .05, -.05),
     '++more-gradient': (-.05, .05, -.05, .05),
+    '++invert': invert_colors,
+    '++shift': shift_colors,
+    'lightbg++white-bg': (255, 255, 255, 255),
+    'lightbg++blurple-bg': (114, 137, 218, 255),
+    'lightbg++dark-blurple-bg': (78, 93, 148, 255),
+    'darkbg++blurple-bg': (114, 137, 218, 255),
+    'darkbg++dark-blurple-bg': (78, 93, 148, 255),
+    'darkbg++not-quite-black-bg': (35, 39, 42, 255),
 }
 
 
 def convert_image(image, modifier, method, variations):
     try:
-        modifier_converter = MODIFIERS[modifier]
+        modifier_converter = dict(MODIFIERS[modifier])
     except KeyError:
         raise RuntimeError('Invalid image modifier.')
 
@@ -328,7 +353,7 @@ def convert_image(image, modifier, method, variations):
         raise RuntimeError('Invalid image method.')
 
     variations.sort()
-
+    background_color = None
     base_color_var = (.15, .3, .7, .85)
     for var in variations:
         try:
@@ -337,8 +362,15 @@ def convert_image(image, modifier, method, variations):
             try:
                 variation_converter = VARIATIONS[modifier + var]
             except KeyError:
-                raise RuntimeError('Invalid image variation.')
-        if method is not "--filter":
+                try:
+                    variation_converter = VARIATIONS[modifier + 'bg' + var]
+                    background_color = variation_converter
+                    continue
+                except KeyError:
+                    raise RuntimeError('Invalid image variation.')
+        if not isinstance(variation_converter, tuple):
+            modifier_converter['colors'] = variation_converter(modifier_converter['colors'])
+        elif method is not "--filter":
             base_color_var = variation_maker(base_color_var, variation_converter)
     if method is not "--filter":
         variation_converter = base_color_var
@@ -366,6 +398,8 @@ def convert_image(image, modifier, method, variations):
 
             for frame in ImageSequence.Iterator(img):
                 new_frame = method_converter(frame, modifier_converter, variation_converter, maximum, minimum)
+                if background_color is not None:
+                    new_frame = remove_alpha(new_frame, background_color)
 
                 durations.append(frame.info['duration'])
                 frames.append(new_frame)
@@ -388,7 +422,8 @@ def convert_image(image, modifier, method, variations):
             maximum = img.getextrema()[0][1]
 
             img = method_converter(img, modifier_converter, variation_converter, maximum, minimum)
-
+            if background_color is not None:
+                img = remove_alpha(img, background_color)
             out = io.BytesIO()
             img.save(out, format='png')
             filename = f'{modifier}.png'
