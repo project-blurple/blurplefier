@@ -1,8 +1,21 @@
-queue_emoji: 🤸
+queue_emoji: a:loading:572202235342225418
+
+project_blurple_guild: 559341262302347314
+
+blurple_light_role: 573651237115920403
+blurple_dark_role: 573651772812558337
+
+blurple_user_role: 574061568308805642
+blacklist_role: 574109557425438730
+
+blurplefier_reaction_channel: 571144782202535956
+blurplefier_reaction_message: 572841925019959314
+
+footer_thumbnail_url: https://cdn.discordapp.com/emojis/412788702897766401.png?v=1
 
 bot:
   prefix: !
-  owner_id: 69198249432449024
+  owner_id: 248245568004947969
 
   token: beep.boop.secret
 
