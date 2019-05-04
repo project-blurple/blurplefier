@@ -9,10 +9,25 @@ from discord.ext import commands
 from .converter import FlagConverter, FlagConverter2, LinkConverter
 from bot import Cog
 
+async def is_blacklisted(self, ctx):
+    guild = self.bot.get_guild(self.bot.config['project_blurple_guild'])
+    return guild.get_role(self.bot.config['blacklist_role']) in ctx.author.roles
 
+async def get_modifier(self, ctx):
+    guild = self.bot.get_guild(self.bot.config['project_blurple_guild'])
+    if guild.get_role(self.bot.config['blurple_light_role']) in ctx.author.roles:
+        return 'light'
+    elif guild.get_role(self.bot.config['blurple_dark_role']) in ctx.author.roles:
+        return 'dark'
+    else:
+        await ctx.channel.send('You need to be a part of a team first.')
+        return None
 def _make_check_command(name, **kwargs):
     @commands.command(name, help=f'{name.title()} an image to get the Blurple User role.', **kwargs)
     async def command(self, ctx, *, who: typing.Union[discord.Member, discord.PartialEmoji, LinkConverter] = None):
+
+        if await is_blacklisted(self, ctx):
+            return
 
         variation = None
 
@@ -29,12 +44,8 @@ def _make_check_command(name, **kwargs):
             else:
                 url = who.avatar_url
 
-        if ctx.guild.get_role(self.bot.config['blurple_light_role']) in ctx.author.roles:
-            modifier = 'light'
-        elif ctx.guild.get_role(self.bot.config['blurple_dark_role']) in ctx.author.roles:
-            modifier = 'dark'
-        else:
-            await ctx.channel.send('You need to be a part of a team first.')
+        modifier = await get_modifier(self, ctx)
+        if modifier is None:
             return
 
         data = {'modifier': modifier, 'method': name, 'variation': variation, 'url': str(url),
@@ -55,6 +66,9 @@ def _make_color_command(name, modifier, **kwargs):
                       variations: commands.Greedy[FlagConverter2] = [None], *,
                       who: typing.Union[discord.Member, discord.PartialEmoji, LinkConverter] = None):
 
+        if await is_blacklisted(self, ctx):
+            return
+
         if ctx.message.attachments:
             url = ctx.message.attachments[0].proxy_url
         elif who is None:
@@ -68,12 +82,8 @@ def _make_color_command(name, modifier, **kwargs):
                 url = who.avatar_url
 
         if modifier is 'blurplefy':
-            if ctx.guild.get_role(self.bot.config['blurple_light_role']) in ctx.author.roles:
-                final_modifier = 'light'
-            elif ctx.guild.get_role(self.bot.config['blurple_dark_role']) in ctx.author.roles:
-                final_modifier = 'dark'
-            else:
-                await ctx.channel.send('You need to be a part of a team first.')
+            final_modifier = await get_modifier(self, ctx)
+            if final_modifier is None:
                 return
         else:
             final_modifier = modifier
