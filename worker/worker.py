@@ -6,17 +6,16 @@ import json
 import logging
 import os
 import signal
+import traceback
 
 import aiohttp
 import aioredis
 import discord.http
 import ruamel.yaml
 
-from .magic import convert_image
-
+from .magic import convert_image, check_image
 
 log = logging.getLogger(__name__)
-
 
 WORKER_COUNT = int(os.environ.get('WORKER_COUNT', '1'))
 
@@ -123,43 +122,103 @@ class Worker:
 
     async def run_job(self, data):
         user_id = data['requester']
+        guild_id = data['guild']
         channel_id = data['channel']
         message_id = data['message']
 
-        try:
-            image = await self.http.get_from_cdn(data['url'])
-        except discord.HTTPException:
-            await self._send_error(f'I failed to download your image, please try again <@!{user_id}>!', channel_id)
-            return
+        async def blurplefy():
+            try:
+                image = await self.http.get_from_cdn(data['url'])
+            except discord.HTTPException:
+                await self._send_error(f'I failed to download your image, please try again <@!{user_id}>!', channel_id)
+                return
 
-        if len(image) >= 8388608:
-            await self._send_error(
-                f'Your image is above 8MiB large, please use smaller images <@!{user_id}>!', channel_id
-            )
-            return
+            if len(image) >= 8388608:
+                await self._send_error(
+                    f'Your image is above 8MiB large, please use smaller images <@!{user_id}>!', channel_id
+                )
+                return
 
-        try:
-            result = convert_image(image, data['modifier'], data['method'], data['variation'])
-        except RuntimeError as e:
-            await self._send_error(f'<@!{user_id}> I failed to convert your image: **{e}**', channel_id)
-            return
-        except Exception as e:
-            await self._send_error(f'<@!{user_id}> I failed to convert your image.', channel_id)
-            print(e)
-            return
+            try:
+                result = convert_image(image, data['modifier'], data['method'], data['variation'])
+            except RuntimeError as e:
+                await self._send_error(f'<@!{user_id}> I failed to convert your image: **{e}**', channel_id)
+                return
+            except Exception as e:
+                await self._send_error(f'<@!{user_id}> I failed to convert your image.', channel_id)
+                traceback.print_exc()
+                return
 
-        try:
-            msg = f'Here is your image <@!{user_id}>!'
-            await self.http.send_files(channel_id, content=msg, files=(result,))
-        except discord.HTTPException:
-            await self._send_error(
-                f'I couldn\'t upload your image to Discord, it may be too big <@!{user_id}>!', channel_id
-            )
+            try:
+                msg = f'Here is your image <@!{user_id}>!'
+                await self.http.send_files(channel_id, content=msg, files=(result,))
+            except discord.HTTPException:
+                await self._send_error(
+                    f'I couldn\'t upload your image to Discord, it may be too big <@!{user_id}>!', channel_id
+                )
 
-        try:
-            await self.http.remove_reaction(message_id, channel_id, self.config['queue_emoji'], self._bot_user_id)
-        except discord.HTTPException:
-            pass
+            try:
+                await self.http.remove_reaction(message_id, channel_id, self.config['queue_emoji'], self._bot_user_id)
+            except discord.HTTPException:
+                pass
+
+        async def check():
+            try:
+                image = await self.http.get_from_cdn(data['url'])
+            except discord.HTTPException:
+                await self._send_error(f'I failed to download your image, please try again <@!{user_id}>!', channel_id)
+                return
+
+            if len(image) >= 8388608 * 2:
+                await self._send_error(
+                    f'Your image is above 16MiB large, please use smaller images <@!{user_id}>!', channel_id
+                )
+                return
+
+            try:
+                result = check_image(image, data['modifier'], data['method'])
+            except RuntimeError as e:
+                await self._send_error(f'<@!{user_id}> I failed to check your image: **{e}**', channel_id)
+                return
+            except Exception as e:
+                await self._send_error(f'<@!{user_id}> I failed to check your image.', channel_id)
+                traceback.print_exc()
+                return
+
+            try:
+                description = ""
+                for i in range(4):
+                    description += f"{result['colors'][i]['name']}: {result['colors'][i]['ratio']}%\n"
+                passed = result['passed']
+                if passed and data['variation'] == 'avatar':
+                    await self.http.add_role(guild_id, user_id, self.config['blurple_user_role'],
+                                             reason='User has earned blurple role.')
+                    description += "Status: **Passed** (Blurple User Role Added)"
+                elif passed:
+                    description += "Status: **Passed**"
+                else:
+                    description += "Status: **Failed**"
+                embed = discord.Embed(colour=discord.Colour(0x7289da),
+                                      description=description)
+                embed.set_image(url=data['url'])
+                embed.set_author(name="Blurple Checker")
+                embed.set_footer(text=f"Blurplefier | {data['author']}",
+                                 icon_url=self.config['footer_thumbnail_url'])
+                await self.http.send_message(channel_id, content=None, embed=embed.to_dict())
+            except discord.HTTPException:
+                await self._send_error(
+                    f'I couldn\'t upload your image to Discord, it may be too big <@!{user_id}>!', channel_id
+                )
+
+            try:
+                await self.http.remove_reaction(message_id, channel_id, self.config['queue_emoji'], self._bot_user_id)
+            except discord.HTTPException:
+                pass
+
+        if data['method'] == 'check':
+            await check()
+        else:
+            await blurplefy()
 
     async def _send_error(self, message, channel_id):
         try:
