@@ -106,7 +106,7 @@ def _make_color_command(name, modifier, **kwargs):
             else:
                 url = who.avatar_url
 
-        if modifier is 'blurplefy':
+        if modifier == 'blurplefy':
             final_modifier = await get_modifier(self, ctx)
             if final_modifier is None:
                 return
