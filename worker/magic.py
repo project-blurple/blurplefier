@@ -267,7 +267,7 @@ def color_ratios(img, colors):
     for x in range(0, img.width):
         for y in range(0, img.height):
             p = img.getpixel((x, y))
-            if p[3] is 0:
+            if p[3] == 0:
                 total_pixels -= 1
                 continue
             values = [0, 0, 0]
@@ -370,9 +370,9 @@ def convert_image(image, modifier, method, variations):
                     raise RuntimeError('Invalid image variation.')
         if not isinstance(variation_converter, tuple):
             modifier_converter['colors'] = variation_converter(modifier_converter['colors'])
-        elif method is not "--filter":
+        elif method != "--filter":
             base_color_var = variation_maker(base_color_var, variation_converter)
-    if method is not "--filter":
+    if method != "--filter":
         variation_converter = base_color_var
 
     with Image.open(io.BytesIO(image)) as img:
