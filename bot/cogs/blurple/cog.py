@@ -37,7 +37,12 @@ async def get_default_blurplefier(self, ctx):
     if len((await reaction.users().filter(lambda x: x.id == ctx.author.id).flatten())) != 0:
         return '--filter'
 
-    await ctx.channel.send('You need to choose a default blurplefier first.')
+    description = f"→ [Jump to message](https://discordapp.com/channels/{self.bot.config['project_blurple_guild']}/{self.bot.config['blurplefier_reaction_channel']}/{self.bot.config['blurplefier_reaction_message']})"
+    embed = discord.Embed(colour=discord.Colour(0x7289da), description=description)
+    embed.set_author(name="Choose a default blurplefier.")
+    embed.set_footer(text=f"Blurplefier | {str(ctx.author)}",
+                     icon_url=self.bot.config['footer_thumbnail_url'])
+    await ctx.channel.send(f'<@!{ctx.author.id}> You need to choose a default blurplefier first.', embed=embed)
     return None
 
 
