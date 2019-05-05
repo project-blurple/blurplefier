@@ -24,7 +24,7 @@ class Bot(commands.Bot):
 
         self.redis = None
 
-        extensions = ('jishaku', 'bot.cogs.blurple', 'bot.cogs.errors')
+        extensions = ('jishaku', 'bot.cogs.blurple', 'bot.cogs.errors', 'bot.cogs.help')
 
         for name in extensions:
             self.load_extension(name)
