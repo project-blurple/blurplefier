@@ -15,9 +15,11 @@ from bot import Cog
 
 async def get_modifier(self, ctx):
     guild = self.bot.get_guild(self.bot.config['project_blurple_guild'])
-    if guild.get_role(self.bot.config['blurple_light_role']) in ctx.author.roles:
+    if guild.get_role(self.bot.config['blurple_light_role']) in ctx.author.roles or guild.get_role(
+            self.bot.config['pending_blurple_light_role']) in ctx.author.roles:
         return 'light'
-    elif guild.get_role(self.bot.config['blurple_dark_role']) in ctx.author.roles:
+    elif guild.get_role(self.bot.config['blurple_dark_role']) in ctx.author.roles or guild.get_role(
+            self.bot.config['pending_blurple_dark_role']) in ctx.author.roles:
         return 'dark'
     else:
         await ctx.channel.send('You need to be a part of a team first.')

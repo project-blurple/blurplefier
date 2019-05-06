@@ -207,8 +207,12 @@ class Worker:
                     description += f"{result['colors'][i]['name']}: {result['colors'][i]['ratio']}%\n"
                 passed = result['passed']
                 if passed and data['variation'] == 'avatar':
-                    await self.http.add_role(guild_id, user_id, self.config['blurple_user_role'],
-                                             reason='User has earned blurple role.')
+                    if data['modifier'] == 'light':
+                        await self.http.remove_role(guild_id, user_id, self.config['pending_blurple_light_role'])
+                        await self.http.add_role(guild_id, user_id, self.config['blurple_light_role'])
+                    elif data['modifier'] == 'dark':
+                        await self.http.remove_role(guild_id, user_id, self.config['pending_blurple_dark_role'])
+                        await self.http.add_role(guild_id, user_id, self.config['blurple_dark_role'])
                     description += "Status: **Passed** (Blurple User Role Added)"
                 elif passed:
                     description += "Status: **Passed**"
