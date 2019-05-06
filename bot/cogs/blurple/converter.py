@@ -10,11 +10,11 @@ class LinkConverter(commands.Converter):
         if not argument.startswith(('http://', 'https://')):
             raise commands.BadArgument('Not a valid URL!')
 
-        for _ in range(5):
+        for _ in range(10):
             if ctx.message.embeds and ctx.message.embeds[0].thumbnail:
                 return ctx.message.embeds[0].thumbnail.proxy_url
 
-            await asyncio.sleep(.5)
+            await asyncio.sleep(1)
 
         raise commands.BadArgument('Discord proxy image did not load in time.')
 
