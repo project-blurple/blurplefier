@@ -2,10 +2,12 @@ queue_emoji: a:loading:572202235342225418
 
 project_blurple_guild: 559341262302347314
 
+pending_blurple_light_role: 574854165415591957
+pending_blurple_dark_role: 574854043806072842
+
 blurple_light_role: 573651237115920403
 blurple_dark_role: 573651772812558337
 
-blurple_user_role: 574061568308805642
 blacklist_role: 574109557425438730
 
 blurplefier_reaction_channel: 571144782202535956
