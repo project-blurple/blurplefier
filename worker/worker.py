@@ -15,9 +15,19 @@ import ruamel.yaml
 
 from .magic import convert_image, check_image
 
+
 log = logging.getLogger(__name__)
 
+
 WORKER_COUNT = int(os.environ.get('WORKER_COUNT', '1'))
+
+CONNECTION_ERRORS = (
+    asyncio.TimeoutError,
+    aiohttp.ClientConnectionError,
+    aiohttp.ClientConnectorError,
+    aiohttp.ClientOSError,
+    aiohttp.ServerConnectionError,
+)
 
 
 # Please ignore this ugliness
@@ -31,6 +41,8 @@ class Worker:
         self.config = config
 
         self.http = None
+        self.session = None
+
         self.redis = None
 
         self.token = None
@@ -59,7 +71,7 @@ class Worker:
         # This is not intended to be used so there's no pretty way of creating it
         self.http = http = discord.http.HTTPClient()
         http._token(self.token)
-        http._HTTPClient__session = aiohttp.ClientSession()
+        self.session = http._HTTPClient__session = aiohttp.ClientSession()
 
         self.loop.create_task(self.run_jobs())
 
@@ -128,12 +140,16 @@ class Worker:
 
         async def blurplefy():
             try:
-                image = await self.http.get_from_cdn(data['url'])
-            except discord.HTTPException:
+                async with self.session.get(data['url']) as resp:
+                    if int(resp.headers.get('Content-Length', 0)) > 1024 ** 2 * 8:
+                        image = None
+                    else:
+                        image = await resp.read()
+            except (Exception, *CONNECTION_ERRORS):  # Catch bare Exception to be safe
                 await self._send_error(f'I failed to download your image, please try again <@!{user_id}>!', channel_id)
                 return
 
-            if len(image) >= 8388608:
+            if image is None:
                 await self._send_error(
                     f'Your image is above 8MiB large, please use smaller images <@!{user_id}>!', channel_id
                 )
