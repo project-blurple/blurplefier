@@ -210,10 +210,10 @@ class Worker:
                     if data['modifier'] == 'light':
                         await self.http.remove_role(guild_id, user_id, self.config['pending_blurple_light_role'])
                         await self.http.add_role(guild_id, user_id, self.config['blurple_light_role'])
-                    elif data['modifier'] == 'dark':
+                    else:
                         await self.http.remove_role(guild_id, user_id, self.config['pending_blurple_dark_role'])
                         await self.http.add_role(guild_id, user_id, self.config['blurple_dark_role'])
-                    description += "Status: **Passed** (Blurple User Role Added)"
+                    description += "Status: **Passed** (Blurple Team Role Added)"
                 elif passed:
                     description += "Status: **Passed**"
                 else:
