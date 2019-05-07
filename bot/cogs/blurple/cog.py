@@ -22,7 +22,7 @@ async def get_modifier(self, ctx):
             self.bot.config['pending_blurple_dark_role']) in ctx.author.roles:
         return 'dark'
     else:
-        await ctx.channel.send('You need to be a part of a team first.')
+        await ctx.channel.send(f'<@!{ctx.author.id}> You need to be a part of a team first. To join a team, use the `+rollteam` command on the Blurplefied bot.')
         return None
 
 
