@@ -1,7 +1,15 @@
+# You will need to use a custom emoji here for when the bot is processing the image.
+# Get rid of the "a" if you are not using an animated emoji
 queue_emoji: a:loading:572202235342225418
 
+# This will be the guild where the bot will be serving blurple images.
 project_blurple_guild: 559341262302347314
 
+# Roles for when you have rolled for a team (either dark or light)
+# To set this up:
+# 1. Create 5 roles
+# 2. Make them mentionable temporarily
+# 3. Grab their ID's (put a \ before the @ when mentioning the role.)
 pending_blurple_light_role: 574854165415591957
 pending_blurple_dark_role: 574854043806072842
 
@@ -10,22 +18,29 @@ blurple_dark_role: 573651772812558337
 
 blacklist_role: 574109557425438730
 
+# You will need to react :one: and :two: to the message in order for this to work properly
+# On the message itself, mention that users will need to react in order to set the default !blurplefy mode
+# :one: being dark, :two: being light
 blurplefier_reaction_channel: 571144782202535956
 blurplefier_reaction_message: 572841925019959314
 
+# This will be the icon set at the bottom of all of the embeds
 footer_thumbnail_url: https://cdn.discordapp.com/emojis/412788702897766401.png?v=1
 
 bot:
-  prefix: !
+  prefix: "!"
   owner_id: 248245568004947969
 
+  # This can be obtained at https://discordapp.com/developers/applications/
   token: beep.boop.secret
 
+# The token(s) here will be the same as the bot token above
 workers:
   - first.worker.token
   - second.worker.token
   # Add as many as needed
 
+# Leave this alone since this is already configured for docker. (Unless you are setting it up on Windows, change the address)
 redis:
   address:
     - redis
