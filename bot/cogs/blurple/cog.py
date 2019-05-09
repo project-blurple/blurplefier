@@ -15,17 +15,26 @@ from bot import Cog
 log = logging.getLogger(__name__)
 
 
-async def get_modifier(self, ctx):
-    guild = self.bot.get_guild(self.bot.config['project_blurple_guild'])
-    if guild.get_role(self.bot.config['blurple_light_role']) in ctx.author.roles or guild.get_role(
-            self.bot.config['pending_blurple_light_role']) in ctx.author.roles:
-        return 'light'
-    elif guild.get_role(self.bot.config['blurple_dark_role']) in ctx.author.roles or guild.get_role(
-            self.bot.config['pending_blurple_dark_role']) in ctx.author.roles:
-        return 'dark'
+async def get_modifier(ctx):
+    config = ctx.bot.config
+
+    role_ids = {
+        config['blurple_light_role']: 'light',
+        config['pending_blurple_light_role']: 'light',
+        config['blurple_dark_role']: 'dark',
+        config['pending_blurple_dark_role']: 'dark',
+    }
+
+    try:
+        found = next(x for x in ctx.author.roles if x.id in role_ids)
+    except StopIteration:
+        await ctx.send(
+            f'<@!{ctx.author.id}> You need to be a part of a team first.'
+            f' To join a team, use the `+rollteam` command on the Blurplefied bot.'
+        )
     else:
-        await ctx.channel.send(f'<@!{ctx.author.id}> You need to be a part of a team first. To join a team, use the `+rollteam` command on the Blurplefied bot.')
-        return None
+        # 'light' or 'dark'
+        return role_ids[found.id]
 
 
 def _make_check_command(name, **kwargs):
@@ -47,7 +56,8 @@ def _make_check_command(name, **kwargs):
             else:
                 url = who.avatar_url
 
-        modifier = await get_modifier(self, ctx)
+        modifier = await get_modifier(ctx)
+
         if modifier is None:
             return
 
@@ -71,6 +81,7 @@ def _make_color_command(name, modifier, **kwargs):
 
         if method is None:
             method = await self.get_default_blurplefier(ctx)
+
             if method is None:
                 return
         if ctx.message.attachments:
@@ -86,7 +97,8 @@ def _make_color_command(name, modifier, **kwargs):
                 url = who.avatar_url
 
         if modifier == 'blurplefy':
-            final_modifier = await get_modifier(self, ctx)
+            final_modifier = await get_modifier(ctx)
+
             if final_modifier is None:
                 return
         else:
