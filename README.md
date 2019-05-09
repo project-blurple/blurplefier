@@ -1,4 +1,3 @@
-=========
 Blurplefy
 =========
 
@@ -18,21 +17,19 @@ Afterwards you'll want to adjust the ``WORKER_COUNT`` environment variable, if u
 
 To run the bot with docker see these steps:
 
-.. code-block :: bash
+```bash
+docker-compose up --scale workers=2
+```
 
-    docker-compose up --scale workers=2
-
-
-To run the bot without docker you will need to install and run `Redis <https://redis.io>`_ (see
-`here <https://redislabs.com/blog/redis-on-windows-10/>`_ for Windows 10 instructions) as well as
+To run the bot without docker you will need to install and run [Redis](https://redis.io) (see
+[here](https://redislabs.com/blog/redis-on-windows-10/) for Windows 10 instructions) as well as
 install all the Python requirements using ``pip install -Ur requirements.txt``.
 
 Running the bot and worker can then be done from the root directory of this repository:
 
-.. code-block :: bash
+```
+python -m bot
 
-    python -m bot
-
-    python -m worker
-
+python -m worker
+```
 And that's it! Have fun with the bot.
