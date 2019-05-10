@@ -2,7 +2,7 @@ version: '3'
 
 services:
   bot:
-    image: blurplefy
+    build: .
     command: python -m bot
     restart: unless-stopped
     depends_on:
@@ -13,7 +13,7 @@ services:
       - JISHAKU_HIDE=true
 
   worker:
-    image: blurplefy
+    build: .
     command: python -m worker
     restart: unless-stopped
     depends_on:
