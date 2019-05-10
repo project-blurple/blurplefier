@@ -16,6 +16,7 @@ class Bot(commands.Bot):
     def __init__(self, config, **kwargs):
         super().__init__(
             command_prefix=config['bot']['prefix'],
+            case_insensitive=True,
             owner_id=config['bot'].get('owner_id'),
             **kwargs,
         )

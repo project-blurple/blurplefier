@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import asyncio
 import json
+import logging
 import typing
 
 import discord
@@ -10,41 +12,29 @@ from .converter import FlagConverter, FlagConverter2, LinkConverter
 from bot import Cog
 
 
+log = logging.getLogger(__name__)
 
 
+async def get_modifier(ctx):
+    config = ctx.bot.config
 
-async def get_modifier(self, ctx):
-    guild = self.bot.get_guild(self.bot.config['project_blurple_guild'])
-    if guild.get_role(self.bot.config['blurple_light_role']) in ctx.author.roles or guild.get_role(
-            self.bot.config['pending_blurple_light_role']) in ctx.author.roles:
-        return 'light'
-    elif guild.get_role(self.bot.config['blurple_dark_role']) in ctx.author.roles or guild.get_role(
-            self.bot.config['pending_blurple_dark_role']) in ctx.author.roles:
-        return 'dark'
+    role_ids = {
+        config['blurple_light_role']: 'light',
+        config['pending_blurple_light_role']: 'light',
+        config['blurple_dark_role']: 'dark',
+        config['pending_blurple_dark_role']: 'dark',
+    }
+
+    try:
+        found = next(x for x in ctx.author.roles if x.id in role_ids)
+    except StopIteration:
+        await ctx.send(
+            f'<@!{ctx.author.id}> You need to be a part of a team first.'
+            f' To join a team, use the `+rollteam` command on the Blurplefied bot.'
+        )
     else:
-        await ctx.channel.send(f'<@!{ctx.author.id}> You need to be a part of a team first. To join a team, use the `+rollteam` command on the Blurplefied bot.')
-        return None
-
-
-async def get_default_blurplefier(self, ctx):
-    message = await self.bot.get_guild(self.bot.config['project_blurple_guild']).get_channel(
-        self.bot.config['blurplefier_reaction_channel']).fetch_message(self.bot.config['blurplefier_reaction_message'])
-    reactions = message.reactions
-
-    reaction = next((x for x in reactions if x.emoji == '1⃣'))
-    if len((await reaction.users().filter(lambda x: x.id == ctx.author.id).flatten())) != 0:
-        return '--blurplefy'
-
-    reaction = next((x for x in reactions if x.emoji == '2⃣'))
-    if len((await reaction.users().filter(lambda x: x.id == ctx.author.id).flatten())) != 0:
-        return '--filter'
-
-    description = f"To choose a default Blurplefier, jump to [*this message*](https://discordapp.com/channels/{self.bot.config['project_blurple_guild']}/{self.bot.config['blurplefier_reaction_channel']}/{self.bot.config['blurplefier_reaction_message']})"
-    embed = discord.Embed(colour=discord.Colour(0x7289da), description=description)
-    embed.set_footer(text=f"Blurplefier | {str(ctx.author)}",
-                     icon_url=self.bot.config['footer_thumbnail_url'])
-    await ctx.channel.send(f'<@!{ctx.author.id}> You need to choose a default blurplefier first.', embed=embed)
-    return None
+        # 'light' or 'dark'
+        return role_ids[found.id]
 
 
 def _make_check_command(name, **kwargs):
@@ -66,7 +56,8 @@ def _make_check_command(name, **kwargs):
             else:
                 url = who.avatar_url
 
-        modifier = await get_modifier(self, ctx)
+        modifier = await get_modifier(ctx)
+
         if modifier is None:
             return
 
@@ -89,7 +80,8 @@ def _make_color_command(name, modifier, **kwargs):
                       who: typing.Union[discord.Member, discord.PartialEmoji, LinkConverter] = None):
 
         if method is None:
-            method = await get_default_blurplefier(self, ctx)
+            method = await self.get_default_blurplefier(ctx)
+
             if method is None:
                 return
         if ctx.message.attachments:
@@ -105,7 +97,8 @@ def _make_color_command(name, modifier, **kwargs):
                 url = who.avatar_url
 
         if modifier == 'blurplefy':
-            final_modifier = await get_modifier(self, ctx)
+            final_modifier = await get_modifier(ctx)
+
             if final_modifier is None:
                 return
         else:
@@ -124,7 +117,83 @@ def _make_color_command(name, modifier, **kwargs):
 
 
 class Blurplefy(Cog):
+    def __init__(self, bot):
+        super().__init__(bot)
+
+        # Reaction user cache for fewer lookups
+        self._ready = asyncio.Event()
+
+        self._reaction_users = {
+            '1\N{COMBINING ENCLOSING KEYCAP}': set(),
+            '2\N{COMBINING ENCLOSING KEYCAP}': set(),
+        }
+
     lightfy = _make_color_command('lightfy', 'light')
     darkfy = _make_color_command('darkfy', 'dark')
     blurplefy = _make_color_command('blurplefy', 'blurplefy')
     check = _make_check_command('check')
+
+    @Cog.listener()
+    async def on_ready(self):
+        channel = self.bot.get_channel(self.bot.config['blurplefier_reaction_channel'])
+        message = await channel.fetch_message(self.bot.config['blurplefier_reaction_message'])
+
+        self._ready.clear()
+        self._reaction_users = {
+            key: set() for key in self._reaction_users.keys()
+        }
+
+        for reaction in filter(lambda x: x.emoji in self._reaction_users.keys(), message.reactions):
+            async for user in reaction.users(limit=None):
+                self._reaction_users[reaction.emoji].add(user.id)
+
+        self._ready.set()
+        log.info('Cached all reaction users to blurplefier message.')
+
+    @Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        self._handle_reaction(payload, 'add')
+
+    @Cog.listener()
+    async def on_raw_reaction_remove(self, payload):
+        self._handle_reaction(payload, 'remove')
+
+    def _handle_reaction(self, payload, action):
+        if payload.message_id != self.bot.config['blurplefier_reaction_message']:
+            return
+
+        cached = self._reaction_users.get(payload.emoji.name)
+
+        if cached is None:
+            return
+
+        # cached.add() / cached.remove()
+        getattr(cached, action)(payload.user_id)
+
+    async def get_default_blurplefier(self, ctx):
+        await self._ready.wait()
+
+        user_id = ctx.author.id
+
+        blurplefiers = {
+            '1\N{COMBINING ENCLOSING KEYCAP}': '--blurplefy',
+            '2\N{COMBINING ENCLOSING KEYCAP}': '--filter',
+        }
+
+        for name, value in blurplefiers.items():
+            if user_id in self._reaction_users[name]:
+                return value
+
+        guild_id = self.bot.config['project_blurple_guild']
+        channel_id = self.bot.config['blurplefier_reaction_channel']
+        message_id = self.bot.config['blurplefier_reaction_message']
+
+        message_link = f'https://discordapp.com/channels/{guild_id}/{channel_id}/{message_id}'
+
+        embed = discord.Embed(
+            colour=discord.Colour(0x7289da),
+            description=f"To choose a default Blurplefier, jump to [*this message*]({message_link})"
+        )
+        embed.set_footer(text=f"Blurplefier | {str(ctx.author)}", icon_url=self.bot.config['footer_thumbnail_url'])
+
+        await ctx.channel.send(f'<@!{ctx.author.id}> You need to choose a default blurplefier first.', embed=embed)
