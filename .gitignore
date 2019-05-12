@@ -114,6 +114,7 @@ celerybeat-schedule
 
 # Environments
 .env
+!example.env
 .venv
 env/
 venv/
