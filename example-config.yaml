@@ -12,7 +12,7 @@ blurplefier_reaction_message: 572841925019959314
 footer_thumbnail_url: https://cdn.discordapp.com/emojis/412788702897766401.png?v=1
 
 bot:
-  prefix: !
+  prefix: '!'
   owner_id: 248245568004947969
 
   token: beep.boop.secret
