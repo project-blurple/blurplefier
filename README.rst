@@ -22,7 +22,7 @@ To run the bot with docker see these steps:
 
     docker build -t blurplefy .
 
-    docker-compose up --scale workers=2
+    docker-compose up --scale worker=2
 
 
 To run the bot without docker you will need to install and run `Redis <https://redis.io>`_ (see
