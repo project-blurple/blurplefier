@@ -4,10 +4,12 @@ import colorsys
 import io
 import json
 import math
+import logging
 
 import discord
 from PIL import Image, ImageSequence
 
+log = logging.getLogger(__name__)
 
 # source: https://dev.to/enzoftware/how-to-build-amazing-image-filters-with-python-median-filter---sobel-filter---5h7
 def edge_antialiasing(img):
@@ -138,20 +140,19 @@ def interpolate(color1, color2, percent):
 
 
 def f2(x, n, colors, variation):
-    if x < variation[0]:
+    if x <= variation[0]:
         return colors[0][n]
-    elif x < variation[1]:
+    elif x <= variation[1]:
         if variation[0] == variation[2]:
             return interpolate(colors[0][n], colors[2][n], (x - variation[0]) / (variation[1] - variation[0]))
         else:
             return interpolate(colors[0][n], colors[1][n], (x - variation[0]) / (variation[1] - variation[0]))
-    elif x < variation[2]:
+    elif x <= variation[2]:
         return colors[1][n]
-    elif x < variation[3]:
+    elif x <= variation[3]:
         return interpolate(colors[1][n], colors[2][n], (x - variation[2]) / (variation[3] - variation[2]))
     else:
         return colors[2][n]
-
 
 def f3(x, n, colors, cur_color):
     array = []
@@ -183,6 +184,15 @@ def remove_alpha(img, bg):
     return background
 
 
+def clean_alpha(img):
+    img = img.convert('RGBA')
+    for x in range(img.width):
+        for y in range(img.height):
+            pixel = img.getpixel((x,y))
+            if pixel[3] == 0:
+                img.putpixel((x,y),(0,0,0,0))
+    return img
+
 def blurple_filter(img, modifier, variation, maximum, minimum):
     img = img.convert('LA')
     pixels = img.getdata()
@@ -190,7 +200,8 @@ def blurple_filter(img, modifier, variation, maximum, minimum):
     results = [modifier['func']((x - minimum) * 255 / (255 - minimum)) if x >= minimum else 0 for x in range(256)]
 
     img.putdata((*map(lambda x: results[x[0]] + (x[1],), pixels),))
-    return img
+    return clean_alpha(img)
+    
 
 
 def blurplefy(img, modifier, variation, maximum, minimum):
@@ -200,7 +211,8 @@ def blurplefy(img, modifier, variation, maximum, minimum):
     results = [colorify((x - minimum) / (maximum - minimum), modifier['colors'], variation) if x >= minimum else 0 for x
                in range(256)]
     img.putdata((*map(lambda x: results[x[0]] + (x[1],), pixels),))
-    return img
+    return clean_alpha(img)
+
 
 
 def variation_maker(base, var):
@@ -222,13 +234,37 @@ def variation_maker(base, var):
         base4 = max(min(base[3] + var[3], 1), 0)
     return base1, base2, base3, base4
 
+def variation_converter(variations, modifier):
+    variations.sort()
+    base_color_var = (.15, .3, .7, .85)
+    background_color = None
+    for var in variations:
+        try:
+            variation = VARIATIONS[var]
+        except KeyError:
+            try:
+                variation = VARIATIONS['bg' + var]
+                background_color = variation
+                continue
+            except KeyError:
+                try:
+                    variation = VARIATIONS['method' + var]
+                    modifier = variation(modifier)
+                    continue
+                except KeyError:
+                    raise RuntimeError('Invalid image variation.')
+        base_color_var = variation_maker(base_color_var, variation)
+    return base_color_var, background_color, modifier;
 
-def invert_colors(colors):
-    return list(reversed(colors))
+def invert_colors(modifier):
+    modifier['colors'] = list(reversed(modifier['colors']))
+    return modifier
 
 
-def shift_colors(colors):
-    return [colors[2], colors[0], colors[1]]
+def shift_colors(modifier):
+    colors = modifier['colors']
+    modifier['colors'] = [colors[2], colors[0], colors[1]]
+    return modifier
 
 
 def interpolate_colors(color1, color2, x):
@@ -294,13 +330,7 @@ MODIFIERS = {
         'func': light,
         'colors': [(78, 93, 148), (114, 137, 218), (255, 255, 255)],
         'color_names': ['Dark Blurple', 'Blurple', 'White']
-    },
-    'dark': {
-        'func': dark,
-        'colors': [(35, 39, 42), (78, 93, 148), (114, 137, 218)],
-        'color_names': ['Not Quite Black', 'Dark Blurple', 'Blurple']
     }
-
 }
 METHODS = {
     '--blurplefy': blurplefy,
@@ -309,35 +339,23 @@ METHODS = {
 }
 VARIATIONS = {
     None: (0, 0, 0, 0),
-    'light++more-white': (0, 0, -.05, -.05),
-    'light++more-blurple': (-.05, -.05, .05, .05),
-    'light++more-dark-blurple': (.05, .05, 0, 0),
-    'dark++more-blurple': (0, 0, -.05, -.05),
-    'dark++more-dark-blurple': (-.05, -.05, .05, .05),
-    'dark++more-not-quite-black': (.05, .05, 0, 0),
-    'light++less-white': (0, 0, .05, .05),
-    'light++less-blurple': (.05, .05, -.05, -.05),
-    'light++less-dark-blurple': (-.05, -.05, 0, 0),
-    'dark++less-blurple': (0, 0, .05, .05),
-    'dark++less-dark-blurple': (.05, .05, -.05, -.05),
-    'dark++less-not-quite-black': (-.05, -.05, 0, 0),
-    'light++no-white': (0, 0, 500, 500),
-    'light++no-blurple': (0, 500, -500, 0),
-    'light++no-dark-blurple': (-500, -500, 0, 0),
-    'dark++no-blurple': (0, 0, 500, 500),
-    'dark++no-dark-blurple': (0, 500, -500, 0),
-    'dark++no-not-quite-black': (-500, -500, 0, 0),
+    '++more-white': (0, 0, -.05, -.05),
+    '++more-blurple': (-.1, -.1, .1, .1),
+    '++more-dark-blurple': (.05, .05, 0, 0),
+    '++less-white': (0, 0, .05, .05),
+    '++less-blurple': (.1, .1, -.1, -.1),
+    '++less-dark-blurple': (-.05, -.05, 0, 0),
+    '++no-white': (0, 0, 500, 500),
+    '++no-blurple': (0, 500, -500, 0),
+    '++no-dark-blurple': (-500, -500, 0, 0),
     '++classic': (.15, -.15, .15, -.15),
     '++less-gradient': (.05, -.05, .05, -.05),
     '++more-gradient': (-.05, .05, -.05, .05),
-    '++invert': invert_colors,
-    '++shift': shift_colors,
-    'lightbg++white-bg': (255, 255, 255, 255),
-    'lightbg++blurple-bg': (114, 137, 218, 255),
-    'lightbg++dark-blurple-bg': (78, 93, 148, 255),
-    'darkbg++blurple-bg': (114, 137, 218, 255),
-    'darkbg++dark-blurple-bg': (78, 93, 148, 255),
-    'darkbg++not-quite-black-bg': (35, 39, 42, 255),
+    'method++invert': invert_colors,
+    'method++shift': shift_colors,
+    'bg++white-bg': (255, 255, 255, 255),
+    'bg++blurple-bg': (114, 137, 218, 255),
+    'bg++dark-blurple-bg': (78, 93, 148, 255),
 }
 
 
@@ -352,33 +370,14 @@ def convert_image(image, modifier, method, variations):
     except KeyError:
         raise RuntimeError('Invalid image method.')
 
-    variations.sort()
-    background_color = None
-    base_color_var = (.15, .3, .7, .85)
-    for var in variations:
-        try:
-            variation_converter = VARIATIONS[var]
-        except KeyError:
-            try:
-                variation_converter = VARIATIONS[modifier + var]
-            except KeyError:
-                try:
-                    variation_converter = VARIATIONS[modifier + 'bg' + var]
-                    background_color = variation_converter
-                    continue
-                except KeyError:
-                    raise RuntimeError('Invalid image variation.')
-        if not isinstance(variation_converter, tuple):
-            modifier_converter['colors'] = variation_converter(modifier_converter['colors'])
-        elif method != "--filter":
-            base_color_var = variation_maker(base_color_var, variation_converter)
-    if method != "--filter":
-        variation_converter = base_color_var
+    base_color_var, background_color, modifier_converter = variation_converter(variations, modifier_converter)
 
     with Image.open(io.BytesIO(image)) as img:
         if img.format == "GIF":
             frames = []
             durations = []
+            disposals = []
+            colors = []
             try:
                 loop = img.info['loop']
             except KeyError:
@@ -395,25 +394,34 @@ def convert_image(image, modifier, method, variations):
 
                 if frame.getextrema()[0][1] > maximum:
                     maximum = frame.getextrema()[0][1]
-
+                
             for frame in ImageSequence.Iterator(img):
-                new_frame = method_converter(frame, modifier_converter, variation_converter, maximum, minimum)
-                if background_color is not None:
-                    new_frame = remove_alpha(new_frame, background_color)
-
+                new_img = Image.new("RGBA", (img.width, img.height))
+                disposals.append(frame.disposal_method)
                 durations.append(frame.info['duration'])
-                frames.append(new_frame)
-
-            print(durations)
+                new_frame = method_converter(frame, modifier_converter, base_color_var, maximum, minimum)
+                new_img.paste(new_frame, (0,0)) 
+                if background_color is not None:
+                    new_img = remove_alpha(new_img, background_color)
+                
+                alpha = new_img.split()[3]
+                new_img = new_img.convert('RGB').convert('P', palette=Image.ADAPTIVE, colors=255)
+                mask = Image.eval(alpha, lambda a: 255 if a <= 128 else 0)
+                new_img.paste(255, mask=mask)
+                frames.append(new_img)
+            
+            
+            
+            
             out = io.BytesIO()
             try:
                 frames[0].save(out, format='GIF', append_images=frames[1:], save_all=True, loop=loop,
-                               duration=durations)
+                               duration=durations, disposal=disposals, optimize=False, transparency=255)
             except TypeError as e:
                 print(e)
                 raise RuntimeError('Invalid GIF.')
 
-            filename = f'{modifier}.gif'
+            filename = f'blurple.gif'
 
         else:
             img = img.convert('LA')
@@ -421,12 +429,12 @@ def convert_image(image, modifier, method, variations):
             minimum = img.getextrema()[0][0]
             maximum = img.getextrema()[0][1]
 
-            img = method_converter(img, modifier_converter, variation_converter, maximum, minimum)
+            img = method_converter(img, modifier_converter, base_color_var, maximum, minimum)
             if background_color is not None:
                 img = remove_alpha(img, background_color)
             out = io.BytesIO()
             img.save(out, format='png')
-            filename = f'{modifier}.png'
+            filename = f'blurple.png'
 
     out.seek(0)
     return discord.File(out, filename=filename)

@@ -161,7 +161,7 @@ class Worker:
                 await self._send_error(f'<@!{user_id}> I failed to convert your image: **{e}**', channel_id)
                 return
             except Exception as e:
-                await self._send_error(f'<@!{user_id}> I failed to convert your image.', channel_id)
+                await self._send_error(f'<@!{user_id}> I failed to convert your image. Please contact someone for assistance.', channel_id)
                 traceback.print_exc()
                 return
 
@@ -197,8 +197,7 @@ class Worker:
                 await self._send_error(f'<@!{user_id}> I failed to check your image: **{e}**', channel_id)
                 return
             except Exception as e:
-                await self._send_error(f'<@!{user_id}> I failed to check your image.', channel_id)
-                traceback.print_exc()
+                await self._send_error(f'<@!{user_id}> I failed to check your image. Please contact someone for assistance.', channel_id)
                 return
 
             try:
