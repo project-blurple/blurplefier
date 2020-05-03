@@ -15,26 +15,6 @@ from bot import Cog
 log = logging.getLogger(__name__)
 
 
-async def get_modifier(ctx):
-    config = ctx.bot.config
-
-    role_ids = {
-        config['blurple_light_role']: 'light',
-        config['pending_blurple_light_role']: 'light',
-        config['blurple_dark_role']: 'dark',
-        config['pending_blurple_dark_role']: 'dark',
-    }
-
-    try:
-        found = next(x for x in ctx.author.roles if x.id in role_ids)
-    except StopIteration:
-        await ctx.send(
-            f'<@!{ctx.author.id}> You need to be a part of a team first.'
-            f' To join a team, use the `+rollteam` command on the Blurplefied bot.'
-        )
-    else:
-        # 'light' or 'dark'
-        return role_ids[found.id]
 
 
 def _make_check_command(name, **kwargs):
@@ -56,7 +36,7 @@ def _make_check_command(name, **kwargs):
             else:
                 url = who.avatar_url
 
-        modifier = await get_modifier(ctx)
+        modifier = 'light'
 
         if modifier is None:
             return
@@ -96,15 +76,7 @@ def _make_color_command(name, modifier, **kwargs):
             else:
                 url = who.avatar_url
 
-        if modifier == 'blurplefy':
-            final_modifier = await get_modifier(ctx)
-
-            if final_modifier is None:
-                return
-        else:
-            final_modifier = modifier
-
-        data = {'modifier': final_modifier, 'method': method, 'variation': variations, 'url': str(url),
+        data = {'modifier': modifier, 'method': method, 'variation': variations, 'url': str(url),
                 'guild': ctx.guild.id, 'channel': ctx.channel.id, 'requester': ctx.author.id, 'author': str(ctx.author),
                 'message': ctx.message.id}
 
@@ -128,9 +100,9 @@ class Blurplefy(Cog):
             '2\N{COMBINING ENCLOSING KEYCAP}': set(),
         }
 
-    lightfy = _make_color_command('lightfy', 'light')
-    darkfy = _make_color_command('darkfy', 'dark')
-    blurplefy = _make_color_command('blurplefy', 'blurplefy')
+    
+    
+    blurplefy = _make_color_command('blurplefy', 'light')
     check = _make_check_command('check')
 
     @Cog.listener()

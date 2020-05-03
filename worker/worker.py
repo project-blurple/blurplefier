@@ -174,7 +174,7 @@ class Worker:
                 )
 
             try:
-                await self.http.remove_reaction(message_id, channel_id, self.config['queue_emoji'], self._bot_user_id)
+                await self.http.clear_reactions(channel_id, message_id)
             except discord.HTTPException:
                 pass
 
@@ -208,12 +208,8 @@ class Worker:
                 passed = result['passed']
                 if passed and data['variation'] == 'avatar':
                     if data['modifier'] == 'light':
-                        await self.http.remove_role(guild_id, user_id, self.config['pending_blurple_light_role'])
-                        await self.http.add_role(guild_id, user_id, self.config['blurple_light_role'])
-                    else:
-                        await self.http.remove_role(guild_id, user_id, self.config['pending_blurple_dark_role'])
-                        await self.http.add_role(guild_id, user_id, self.config['blurple_dark_role'])
-                    description += "Status: **Passed** (Blurple Team Role Added)"
+                        await self.http.add_role(guild_id, user_id, self.config['blurple_role'])
+                    description += "Status: **Passed** (Blurple Role Added)"
                 elif passed:
                     description += "Status: **Passed**"
                 else:
@@ -231,7 +227,7 @@ class Worker:
                 )
 
             try:
-                await self.http.remove_reaction(message_id, channel_id, self.config['queue_emoji'], self._bot_user_id)
+                await self.http.clear_reactions(channel_id, message_id)
             except discord.HTTPException:
                 pass
 
