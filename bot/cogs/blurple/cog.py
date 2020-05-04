@@ -155,17 +155,6 @@ class Blurplefy(Cog):
         for name, value in blurplefiers.items():
             if user_id in self._reaction_users[name]:
                 return value
-
-        guild_id = self.bot.config['project_blurple_guild']
-        channel_id = self.bot.config['blurplefier_reaction_channel']
-        message_id = self.bot.config['blurplefier_reaction_message']
-
-        message_link = f'https://discordapp.com/channels/{guild_id}/{channel_id}/{message_id}'
-
-        embed = discord.Embed(
-            colour=discord.Colour(0x7289da),
-            description=f"To choose a default Blurplefier, jump to [*this message*]({message_link})"
-        )
-        embed.set_footer(text=f"Blurplefier | {str(ctx.author)}", icon_url=self.bot.config['footer_thumbnail_url'])
-
-        await ctx.channel.send(f'<@!{ctx.author.id}> You need to choose a default blurplefier first.', embed=embed)
+            
+        return 'default--blurplefy'
+        

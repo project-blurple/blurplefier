@@ -10,6 +10,7 @@ import traceback
 
 import aiohttp
 import aioredis
+import discord
 import discord.http
 import ruamel.yaml
 
@@ -156,7 +157,7 @@ class Worker:
                 return
 
             try:
-                result = convert_image(image, data['modifier'], data['method'], data['variation'])
+                result = convert_image(image, data['modifier'], data['method'].replace('default',''), data['variation'])
             except RuntimeError as e:
                 await self._send_error(f'<@!{user_id}> I failed to convert your image: **{e}**', channel_id)
                 return
@@ -166,8 +167,25 @@ class Worker:
                 return
 
             try:
+                
                 msg = f'Here is your image <@!{user_id}>!'
-                await self.http.send_files(channel_id, content=msg, files=(result,))
+                embed = None
+                if data['method'].startswith('default'):
+                    embed_guild_id = self.config['project_blurple_guild']
+                    embed_channel_id = self.config['blurplefier_reaction_channel']
+                    embed_message_id = self.config['blurplefier_reaction_message']
+
+                    message_link = f'https://discordapp.com/channels/{embed_guild_id}/{embed_channel_id}/{embed_message_id}'
+
+                    msg_embed = discord.Embed(
+                        colour=discord.Colour(0x7289da),
+                        description=f"Does your image not look as good as you expected? Try choosing a different default Blurplefier by jumping to [*this message*]({message_link})"
+                    )
+                    msg_embed.set_footer(text=f"Blurplefier | {str(data['author'])}", icon_url=self.config['footer_thumbnail_url'])
+                    embed = msg_embed.to_dict()
+                
+
+                await self.http.send_files(channel_id, content=msg, files=(result,), embed=embed)
             except discord.HTTPException:
                 await self._send_error(
                     f'I couldn\'t upload your image to Discord, it may be too big <@!{user_id}>!', channel_id
