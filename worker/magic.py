@@ -5,6 +5,7 @@ import io
 import json
 import math
 import logging
+import os
 
 import discord
 from PIL import Image, ImageSequence
@@ -252,7 +253,7 @@ def variation_converter(variations, modifier):
                     modifier = variation(modifier)
                     continue
                 except KeyError:
-                    raise RuntimeError('Invalid image variation.')
+                    raise RuntimeError(f'Invalid image variation: \"{var}\"')
         base_color_var = variation_maker(base_color_var, variation)
     return base_color_var, background_color, modifier;
 
@@ -363,12 +364,12 @@ def convert_image(image, modifier, method, variations):
     try:
         modifier_converter = dict(MODIFIERS[modifier])
     except KeyError:
-        raise RuntimeError('Invalid image modifier.')
+        raise RuntimeError(f'Invalid image modifier: \"{modifier}\"')
 
     try:
         method_converter = METHODS[method]
     except KeyError:
-        raise RuntimeError('Invalid image method.')
+        raise RuntimeError(f'Invalid image method: \"{method}\"')
 
     base_color_var, background_color, modifier_converter = variation_converter(variations, modifier_converter)
 
@@ -381,7 +382,7 @@ def convert_image(image, modifier, method, variations):
             try:
                 loop = img.info['loop']
             except KeyError:
-                loop = None
+                loop = 1
 
             minimum = 256
             maximum = 0
@@ -394,7 +395,9 @@ def convert_image(image, modifier, method, variations):
 
                 if frame.getextrema()[0][1] > maximum:
                     maximum = frame.getextrema()[0][1]
-                
+            
+            optimize = True
+
             for frame in ImageSequence.Iterator(img):
                 new_img = Image.new("RGBA", (img.width, img.height))
                 disposals.append(frame.disposal_method)
@@ -403,8 +406,9 @@ def convert_image(image, modifier, method, variations):
                 new_img.paste(new_frame, (0,0)) 
                 if background_color is not None:
                     new_img = remove_alpha(new_img, background_color)
-                
-                alpha = new_img.split()[3]
+                alpha = new_img.getchannel('A')
+                if alpha.getextrema()[0] < 255 and optimize:
+                    optimize = False
                 new_img = new_img.convert('RGB').convert('P', palette=Image.ADAPTIVE, colors=255)
                 mask = Image.eval(alpha, lambda a: 255 if a <= 128 else 0)
                 new_img.paste(255, mask=mask)
@@ -416,9 +420,9 @@ def convert_image(image, modifier, method, variations):
             out = io.BytesIO()
             try:
                 frames[0].save(out, format='GIF', append_images=frames[1:], save_all=True, loop=loop,
-                               duration=durations, disposal=disposals, optimize=False, transparency=255)
+                               duration=durations, disposal=disposals, optimize=optimize, transparency=255)
             except TypeError as e:
-                print(e)
+                log.exception()
                 raise RuntimeError('Invalid GIF.')
 
             filename = f'blurple.gif'

@@ -163,7 +163,7 @@ class Worker:
                 return
             except Exception as e:
                 await self._send_error(f'<@!{user_id}> I failed to convert your image. Please contact someone for assistance.', channel_id)
-                traceback.print_exc()
+                log.exception('Got an error') 
                 return
 
             try:
@@ -216,6 +216,7 @@ class Worker:
                 return
             except Exception as e:
                 await self._send_error(f'<@!{user_id}> I failed to check your image. Please contact someone for assistance.', channel_id)
+                log.exception('Got an error')
                 return
 
             try:
