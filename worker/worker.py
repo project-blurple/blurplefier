@@ -230,6 +230,8 @@ class Worker:
                     description += "Status: **Passed** (Blurple Role Added)"
                 elif passed:
                     description += "Status: **Passed**"
+                elif not passed and data['variation'] == 'avatar': 
+                    description += f"Status: **Failed** (Go to <#{self.config['blurplefier_manual_check_channel']}> for manual checking)"
                 else:
                     description += "Status: **Failed**"
                 embed = discord.Embed(colour=discord.Colour(0x7289da),
