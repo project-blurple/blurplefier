@@ -96,8 +96,8 @@ class Blurplefy(Cog):
         self._ready = asyncio.Event()
 
         self._reaction_users = {
-            '1\N{COMBINING ENCLOSING KEYCAP}': set(),
-            '2\N{COMBINING ENCLOSING KEYCAP}': set(),
+            '1\N{VARIATION SELECTOR-16}\N{COMBINING ENCLOSING KEYCAP}': set(),
+            '2\N{VARIATION SELECTOR-16}\N{COMBINING ENCLOSING KEYCAP}': set(),
         }
 
     
@@ -148,8 +148,8 @@ class Blurplefy(Cog):
         user_id = ctx.author.id
 
         blurplefiers = {
-            '1\N{COMBINING ENCLOSING KEYCAP}': '--blurplefy',
-            '2\N{COMBINING ENCLOSING KEYCAP}': '--filter',
+            '1\N{VARIATION SELECTOR-16}\N{COMBINING ENCLOSING KEYCAP}': '--blurplefy',
+            '2\N{VARIATION SELECTOR-16}\N{COMBINING ENCLOSING KEYCAP}': '--filter',
         }
 
         for name, value in blurplefiers.items():
