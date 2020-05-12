@@ -161,9 +161,8 @@ class Blurplefy(Cog):
             '2\N{VARIATION SELECTOR-16}\N{COMBINING ENCLOSING KEYCAP}': '--filter',
         }
 
-        # for name, value in blurplefiers.items():
-        #     if user_id in self._reaction_users[name]:
-        #         return value
-            
+        for name, value in blurplefiers.items():
+            if user_id in self._reaction_users[name]:
+                return value
+
         return 'default--blurplefy'
-        
