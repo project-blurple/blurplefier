@@ -102,7 +102,7 @@ class Blurplefy(Cog):
 
     
     
-    blurplefy = _make_color_command('blurplefy', 'light', aliases=['blurpefy'])
+    blurplefy = _make_color_command('blurplefy', 'light', aliases=['blurpefy', 'blurplefly', 'blurplfy', 'blurpify', 'burplfy', 'burplefy', 'burplefly'])
     check = _make_check_command('check')
 
     @Cog.listener()
