@@ -100,47 +100,56 @@ class Blurplefy(Cog):
             '2\N{VARIATION SELECTOR-16}\N{COMBINING ENCLOSING KEYCAP}': set(),
         }
 
-    
-    
     blurplefy = _make_color_command('blurplefy', 'light', aliases=['blurpefy', 'blurplefly', 'blurplfy', 'blurpify', 'burplfy', 'burplefy', 'burplefly', 'blurplefry'])
     check = _make_check_command('check')
 
     @Cog.listener()
-    async def on_ready(self):
-        # channel = self.bot.get_channel(self.bot.config['blurplefier_reaction_channel'])
-        # message = await channel.fetch_message(self.bot.config['blurplefier_reaction_message'])
+    async def on_guild_available(self, guild):
+        config = self.bot.config
+
+        if guild.id != config['project_blurple_guild']:
+            return
+
+        log.info('Blurple guild is now available.')
+
+        channel = guild.get_channel(config['blurplefier_reaction_channel'])
+        message = await channel.fetch_message(config['blurplefier_reaction_message'])
+
+        log.info('Fetched reaction message.')
 
         self._ready.clear()
-        # self._reaction_users = {
-        #     key: set() for key in self._reaction_users.keys()
-        # }
+        self._reaction_users = {
+            key: set() for key in self._reaction_users.keys()
+        }
 
-        # for reaction in filter(lambda x: x.emoji in self._reaction_users.keys(), message.reactions):
-        #     async for user in reaction.users(limit=None):
-        #         self._reaction_users[reaction.emoji].add(user.id)
+        for reaction in filter(lambda x: x.emoji in self._reaction_users.keys(), message.reactions):
+            log.info(f'Loading {reaction.count} {reaction.emoji} reactions.')
+
+            async for user in reaction.users(limit=None):
+                self._reaction_users[reaction.emoji].add(user.id)
 
         self._ready.set()
         log.info('Cached all reaction users to blurplefier message.')
 
-    # @Cog.listener()
-    # async def on_raw_reaction_add(self, payload):
-    #     self._handle_reaction(payload, 'add')
+    @Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        self._handle_reaction(payload, 'add')
 
-    # @Cog.listener()
-    # async def on_raw_reaction_remove(self, payload):
-    #     self._handle_reaction(payload, 'remove')
+    @Cog.listener()
+    async def on_raw_reaction_remove(self, payload):
+        self._handle_reaction(payload, 'remove')
 
-    # def _handle_reaction(self, payload, action):
-    #     if payload.message_id != self.bot.config['blurplefier_reaction_message']:
-    #         return
+    def _handle_reaction(self, payload, action):
+        if payload.message_id != self.bot.config['blurplefier_reaction_message']:
+            return
 
-    #     cached = self._reaction_users.get(payload.emoji.name)
+        cached = self._reaction_users.get(payload.emoji.name)
 
-    #     if cached is None:
-    #         return
+        if cached is None:
+            return
 
-    #     # cached.add() / cached.remove()
-    #     getattr(cached, action)(payload.user_id)
+        # cached.add() / cached.remove()
+        getattr(cached, action)(payload.user_id)
 
     async def get_default_blurplefier(self, ctx):
         await self._ready.wait()
