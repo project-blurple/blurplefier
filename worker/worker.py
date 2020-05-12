@@ -179,8 +179,7 @@ class Worker:
 
                     msg_embed = discord.Embed(
                         colour=discord.Colour(0x7289da),
-                        description=f"Does your image not look as good as you expected? Try an alternative blurplefier by using `=blurplefy --filter`."
-                        # description=f"Does your image not look as good as you expected? Try choosing a different default Blurplefier by jumping to [*this message*]({message_link})"
+                        description=f"Does your image not look as good as you expected? Try choosing a different default Blurplefier by jumping to [*this message*]({message_link})"
                     )
                     msg_embed.set_footer(text=f"Blurplefier | {str(data['author'])}", icon_url=self.config['footer_thumbnail_url'])
                     embed = msg_embed.to_dict()
