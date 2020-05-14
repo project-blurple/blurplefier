@@ -179,7 +179,7 @@ class Worker:
 
                     msg_embed = discord.Embed(
                         colour=discord.Colour(0x7289da),
-                        description=f"Does your image not look as good as you expected? Try choosing a different default Blurplefier by jumping to [*this message*]({message_link})\n**NOTE: We no longer give the `Blurple User` role. Please do not ask for it. You can still set your avatar to a blurple-colored one though 'cuz why not?"
+                        description=f"Does your image not look as good as you expected? Try choosing a different default Blurplefier by jumping to [*this message*]({message_link}) \n **NOTE: We no longer give the `Blurple User` role. Please do not ask for it. You can still set your avatar to a blurple-colored one though 'cuz why not?"
                     )
                     msg_embed.set_footer(text=f"Blurplefier | {str(data['author'])}", icon_url=self.config['footer_thumbnail_url'])
                     embed = msg_embed.to_dict()
