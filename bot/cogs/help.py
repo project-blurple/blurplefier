@@ -13,7 +13,6 @@ class help(Cog):
             embed = discord.Embed(title='help', description='Lists commands or provides advanced help for a command.\n`help <command>`')
             embed.color=int(0x7289da)
             embed.add_field(name='blurplefy', value='Manipulate the image color over a curve of dark blurple, blurple, and white.')
-            embed.add_field(name='check', value='Check an image to get the Blurple User role.')
             embed.set_footer(text="Blurplefier | " + str(ctx.author), icon_url='https://images-ext-1.discordapp.net/external/2qAD1AHfsqGs7h3CydMrskwnNjHBITIg9atQy9PEIhs/%3Fv%3D1/https/cdn.discordapp.com/emojis/412788702897766401.png')
             return embed
 
@@ -31,13 +30,6 @@ class help(Cog):
             embed.set_footer(text="Blurplefier | " + str(ctx.author), icon_url='https://images-ext-1.discordapp.net/external/2qAD1AHfsqGs7h3CydMrskwnNjHBITIg9atQy9PEIhs/%3Fv%3D1/https/cdn.discordapp.com/emojis/412788702897766401.png')
             return embed
 
-        def check_embed():
-            embed = discord.Embed(title='Command: check', description='Check an image to get the Blurple User role.')
-            embed.color = int(0x7289da)
-            embed.add_field(name='Usage:', value='`check [who]`')
-            embed.set_footer(text="Blurplefier | " + str(ctx.author), icon_url='https://images-ext-1.discordapp.net/external/2qAD1AHfsqGs7h3CydMrskwnNjHBITIg9atQy9PEIhs/%3Fv%3D1/https/cdn.discordapp.com/emojis/412788702897766401.png')
-            return embed
-
         def error_embed():
             embed = discord.Embed(title='Command not found', description='Please re-check your help query.')
             embed.color = int(0x7289da)
@@ -48,7 +40,6 @@ class help(Cog):
             '' : default_embed(),
             'help' : help_embed(),
             'blurplefy' : blurplefy_embed(),
-            'check' : check_embed(),
             'error' : error_embed()
         }
 

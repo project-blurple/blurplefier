@@ -14,45 +14,6 @@ from bot import Cog
 
 log = logging.getLogger(__name__)
 
-
-
-
-def _make_check_command(name, **kwargs):
-    @commands.command(name, help=f'{name.title()} an image to get the Blurple User role.', **kwargs)
-    async def command(self, ctx, *, who: typing.Union[discord.Member, discord.PartialEmoji, LinkConverter] = None):
-
-        variation = None
-
-        if ctx.message.attachments:
-            url = ctx.message.attachments[0].proxy_url
-        elif who is None:
-            url = ctx.author.avatar_url
-            variation = 'avatar'
-        else:
-            if isinstance(who, str):  # LinkConverter
-                url = who
-            elif isinstance(who, discord.PartialEmoji):
-                url = who.url
-            else:
-                url = who.avatar_url
-
-        modifier = 'light'
-
-        if modifier is None:
-            return
-
-        data = {'modifier': modifier, 'method': name, 'variation': variation, 'url': str(url),
-                'guild': ctx.guild.id, 'channel': ctx.channel.id, 'requester': ctx.author.id, 'author': str(ctx.author),
-                'message': ctx.message.id}
-
-        # Signal that the request has been queued
-        await ctx.message.add_reaction(self.bot.config['queue_emoji'])
-
-        await ctx.bot.redis.rpush('blurple:queue', json.dumps(data))
-
-    return command
-
-
 def _make_color_command(name, modifier, **kwargs):
     @commands.command(name, help=f'{name.title()} an image.', **kwargs)
     async def command(self, ctx, method: typing.Optional[FlagConverter] = None,
@@ -101,7 +62,6 @@ class Blurplefy(Cog):
         }
 
     blurplefy = _make_color_command('blurplefy', 'light', aliases=['blurpefy', 'blurplefly', 'blurplfy', 'blurpify', 'burplfy', 'burplefy', 'burplefly', 'blurplefry'])
-    check = _make_check_command('check')
 
     @Cog.listener()
     async def on_guild_available(self, guild):
