@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 
-import colorsys
 import io
-import json
-import math
 import logging
-import os
+import math
 
-import discord
 from PIL import Image, ImageSequence
 
+
 log = logging.getLogger(__name__)
+
 
 # source: https://dev.to/enzoftware/how-to-build-amazing-image-filters-with-python-median-filter---sobel-filter---5h7
 def edge_antialiasing(img):
@@ -49,7 +47,7 @@ def edge_antialiasing(img):
             b = p[2]
 
             Gx += -(r + g + b)
-            Gy += (r + g + b)
+            Gy += r + g + b
 
             # middle pixels
             p = img.getpixel((x, y - 1))
@@ -72,7 +70,7 @@ def edge_antialiasing(img):
             g = p[1]
             b = p[2]
 
-            Gx += (r + g + b)
+            Gx += r + g + b
             Gy += -(r + g + b)
 
             p = img.getpixel((x + 1, y))
@@ -87,8 +85,8 @@ def edge_antialiasing(img):
             g = p[1]
             b = p[2]
 
-            Gx += (r + g + b)
-            Gy += (r + g + b)
+            Gx += r + g + b
+            Gy += r + g + b
 
             # calculate the length of the gradient (Pythagorean theorem)
             length = math.sqrt((Gx * Gx) + (Gy * Gy))
@@ -110,9 +108,13 @@ def place_edges(img, edge_img, modifiers):
         for y in range(1, img.height - 1):
             p = img.getpixel((x, y))
             ep = edge_img.getpixel((x, y))
-            if (ep[0] > edge_img_minimum):
-                img.putpixel((x, y), edge_colorify((ep[0] - edge_img_minimum) / (edge_img_maximum - edge_img_minimum),
-                                                   modifiers['colors'], p))
+            if ep[0] > edge_img_minimum:
+                img.putpixel(
+                    (x, y),
+                    edge_colorify(
+                        (ep[0] - edge_img_minimum) / (edge_img_maximum - edge_img_minimum), modifiers['colors'], p
+                    ),
+                )
     return img
 
 
@@ -155,6 +157,7 @@ def f2(x, n, colors, variation):
     else:
         return colors[2][n]
 
+
 def f3(x, n, colors, cur_color):
     array = []
 
@@ -189,10 +192,11 @@ def clean_alpha(img):
     img = img.convert('RGBA')
     for x in range(img.width):
         for y in range(img.height):
-            pixel = img.getpixel((x,y))
+            pixel = img.getpixel((x, y))
             if pixel[3] == 0:
-                img.putpixel((x,y),(0,0,0,0))
+                img.putpixel((x, y), (0, 0, 0, 0))
     return img
+
 
 def blurple_filter(img, modifier, variation, maximum, minimum):
     img = img.convert('LA')
@@ -202,31 +206,31 @@ def blurple_filter(img, modifier, variation, maximum, minimum):
 
     img.putdata((*map(lambda x: results[x[0]] + (x[1],), pixels),))
     return clean_alpha(img)
-    
 
 
 def blurplefy(img, modifier, variation, maximum, minimum):
     img = img.convert('LA')
     pixels = img.getdata()
     img = img.convert('RGBA')
-    results = [colorify((x - minimum) / (maximum - minimum), modifier['colors'], variation) if x >= minimum else 0 for x
-               in range(256)]
+    results = [
+        colorify((x - minimum) / (maximum - minimum), modifier['colors'], variation) if x >= minimum else 0
+        for x in range(256)
+    ]
     img.putdata((*map(lambda x: results[x[0]] + (x[1],), pixels),))
     return clean_alpha(img)
-
 
 
 def variation_maker(base, var):
     if var[0] <= -100:
         base1 = base2 = 0
-        base3 = (base[2] + base[0]) / 2 * .75
+        base3 = (base[2] + base[0]) / 2 * 0.75
         base4 = (base[3] + base[1]) / 2 * 1.5
     elif var[1] >= 100:
         base2 = base4 = (base[1] + base[3]) / 2 * 1.5
-        base1 = base3 = (base[0] + base[2]) / 2 * .75
+        base1 = base3 = (base[0] + base[2]) / 2 * 0.75
     elif var[3] >= 100:
         base3 = base4 = 1
-        base1 = (base[0] + base[2]) / 2 * .75
+        base1 = (base[0] + base[2]) / 2 * 0.75
         base2 = (base[1] + base[3]) / 2 * 1.5
     else:
         base1 = max(min(base[0] + var[0], 1), 0)
@@ -235,9 +239,10 @@ def variation_maker(base, var):
         base4 = max(min(base[3] + var[3], 1), 0)
     return base1, base2, base3, base4
 
+
 def variation_converter(variations, modifier):
     variations.sort()
-    base_color_var = (.15, .3, .7, .85)
+    base_color_var = (0.15, 0.3, 0.7, 0.85)
     background_color = None
     for var in variations:
         try:
@@ -255,7 +260,8 @@ def variation_converter(variations, modifier):
                 except KeyError:
                     raise RuntimeError(f'Invalid image variation: \"{var}\"')
         base_color_var = variation_maker(base_color_var, variation)
-    return base_color_var, background_color, modifier;
+    return base_color_var, background_color, modifier
+
 
 def invert_colors(modifier):
     modifier['colors'] = list(reversed(modifier['colors']))
@@ -298,8 +304,8 @@ def color_ratios(img, colors):
     color_pixels = [0, 0, 0, 0]
     close_colors = []
     for i in range(3):
-        close_colors.append(interpolate_colors(colors[i], colors[min(i + 1, 2)], .33))
-        close_colors.append(interpolate_colors(colors[i], colors[max(i - 1, 0)], .33))
+        close_colors.append(interpolate_colors(colors[i], colors[min(i + 1, 2)], 0.33))
+        close_colors.append(interpolate_colors(colors[i], colors[max(i - 1, 0)], 0.33))
 
     for x in range(0, img.width):
         for y in range(0, img.height):
@@ -312,10 +318,10 @@ def color_ratios(img, colors):
                 values[i] = max(
                     distance_to_color(p, colors[i]),
                     distance_to_color(p, close_colors[2 * i]),
-                    distance_to_color(p, close_colors[2 * i + 1])
+                    distance_to_color(p, close_colors[2 * i + 1]),
                 )
             index = find_max_index(values)
-            if values[index] > .93:
+            if values[index] > 0.93:
                 color_pixels[index] += 1
             else:
                 color_pixels[3] += 1
@@ -330,28 +336,26 @@ MODIFIERS = {
     'light': {
         'func': light,
         'colors': [(78, 93, 148), (114, 137, 218), (255, 255, 255)],
-        'color_names': ['Dark Blurple', 'Blurple', 'White']
+        'color_names': ['Dark Blurple', 'Blurple', 'White'],
     }
 }
-METHODS = {
-    '--blurplefy': blurplefy,
-    '--edge-detect': edge_detect,
-    '--filter': blurple_filter
-}
+
+METHODS = {'--blurplefy': blurplefy, '--edge-detect': edge_detect, '--filter': blurple_filter}
+
 VARIATIONS = {
     None: (0, 0, 0, 0),
-    '++more-white': (0, 0, -.05, -.05),
-    '++more-blurple': (-.1, -.1, .1, .1),
-    '++more-dark-blurple': (.05, .05, 0, 0),
-    '++less-white': (0, 0, .05, .05),
-    '++less-blurple': (.1, .1, -.1, -.1),
-    '++less-dark-blurple': (-.05, -.05, 0, 0),
+    '++more-white': (0, 0, -0.05, -0.05),
+    '++more-blurple': (-0.1, -0.1, 0.1, 0.1),
+    '++more-dark-blurple': (0.05, 0.05, 0, 0),
+    '++less-white': (0, 0, 0.05, 0.05),
+    '++less-blurple': (0.1, 0.1, -0.1, -0.1),
+    '++less-dark-blurple': (-0.05, -0.05, 0, 0),
     '++no-white': (0, 0, 500, 500),
     '++no-blurple': (0, 500, -500, 0),
     '++no-dark-blurple': (-500, -500, 0, 0),
-    '++classic': (.15, -.15, .15, -.15),
-    '++less-gradient': (.05, -.05, .05, -.05),
-    '++more-gradient': (-.05, .05, -.05, .05),
+    '++classic': (0.15, -0.15, 0.15, -0.15),
+    '++less-gradient': (0.05, -0.05, 0.05, -0.05),
+    '++more-gradient': (-0.05, 0.05, -0.05, 0.05),
     'method++invert': invert_colors,
     'method++shift': shift_colors,
     'bg++white-bg': (255, 255, 255, 255),
@@ -395,7 +399,7 @@ def convert_image(image, modifier, method, variations):
 
                 if frame.getextrema()[0][1] > maximum:
                     maximum = frame.getextrema()[0][1]
-            
+
             optimize = True
 
             for frame in ImageSequence.Iterator(img):
@@ -403,7 +407,7 @@ def convert_image(image, modifier, method, variations):
                 disposals.append(frame.disposal_method)
                 durations.append(frame.info['duration'])
                 new_frame = method_converter(frame, modifier_converter, base_color_var, maximum, minimum)
-                new_img.paste(new_frame, (0,0)) 
+                new_img.paste(new_frame, (0, 0))
                 if background_color is not None:
                     new_img = remove_alpha(new_img, background_color)
                 alpha = new_img.getchannel('A')
@@ -413,14 +417,20 @@ def convert_image(image, modifier, method, variations):
                 mask = Image.eval(alpha, lambda a: 255 if a <= 128 else 0)
                 new_img.paste(255, mask=mask)
                 frames.append(new_img)
-            
-            
-            
-            
+
             out = io.BytesIO()
             try:
-                frames[0].save(out, format='GIF', append_images=frames[1:], save_all=True, loop=loop,
-                               duration=durations, disposal=disposals, optimize=optimize, transparency=255)
+                frames[0].save(
+                    out,
+                    format='GIF',
+                    append_images=frames[1:],
+                    save_all=True,
+                    loop=loop,
+                    duration=durations,
+                    disposal=disposals,
+                    optimize=optimize,
+                    transparency=255,
+                )
             except TypeError as e:
                 log.exception()
                 raise RuntimeError('Invalid GIF.')
@@ -441,7 +451,7 @@ def convert_image(image, modifier, method, variations):
             filename = f'blurple.png'
 
     out.seek(0)
-    return discord.File(out, filename=filename)
+    return out, filename
 
 
 def check_image(image, modifier, method):
@@ -480,16 +490,7 @@ def check_image(image, modifier, method):
 
     colors = []
     for i in range(3):
-        colors.append({
-            'name': modifier_converter['color_names'][i],
-            'ratio': ratios[i]
-        })
-    colors.append({
-        'name': 'Non-Blurple',
-        'ratio': ratios[3]
-    })
-    data = {
-        'passed': passed,
-        'colors': colors
-    }
+        colors.append({'name': modifier_converter['color_names'][i], 'ratio': ratios[i]})
+    colors.append({'name': 'Non-Blurple', 'ratio': ratios[3]})
+    data = {'passed': passed, 'colors': colors}
     return data

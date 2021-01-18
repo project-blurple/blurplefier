@@ -1,5 +1,6 @@
-aioredis
-discord.py
-jishaku
+awslambdaric
+black
+discord-interactions
+isort
 pillow
-ruamel.yaml
+requests

@@ -2,39 +2,36 @@
 Blurplefy
 =========
 
-Bot which converts images to different blurple shades or other colors.
+Discord application which converts images to different blurple shades or other colors.
 
--------
-Running
--------
+Deploying
+---------
 
-The bot can either be run with docker-compose or using another process manager, the steps are explained below:
+- Set up the AWS CLI:
 
-First you have to create a config file with credentials, you can simply copy the ``example-config.yaml`` and
-edit it with your own values, then save it as ``config.yaml``.
+  https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
 
-Afterwards you'll want to adjust the ``WORKER_COUNT`` environment variable, if using docker you can copy the
-``example.env`` file, edit it and save it as ``.env``.
+- Authenticate Docker so it can push images to an ECR registry:
 
-To run the bot with docker see these steps:
+  https://aws.amazon.com/ecr
+  https://docs.aws.amazon.com/lambda/latest/dg/getting-started-create-function.html#gettingstarted-create-upload
 
-.. code-block :: bash
+- Set up or update an existing Lambda Function to use the pushed image:
 
-    docker build -t blurplefy .
+  https://aws.amazon.com/lambda
 
-    docker-compose up --scale worker=2
+  Under ``Create function`` select ``Container image``, select your image.
 
+  Create a new execution role without any selected permissions as we don't need them.
 
-To run the bot without docker you will need to install and run `Redis <https://redis.io>`_ (see
-`here <https://redislabs.com/blog/redis-on-windows-10/>`_ for Windows 10 instructions) as well as
-install all the Python requirements using ``pip install -Ur requirements.txt``.
+- In the function overview under ``Designer`` on the main page select ``Add trigger``.
 
-Running the bot and worker can then be done from the root directory of this repository:
+  Select ``API Gateway`` from the dropdown, create a new API and select ``Open`` in the security dropdown.
 
-.. code-block :: bash
+  Back on the main page scroll down to Environment variables, click on ``edit`` and add your Discord
+  Application's ID as ``APPLICATION_CLIENT_ID`` and its public key as ``APPLICATION_PUBLIC_KEY``.
 
-    python -m bot
+- Now to finish setting up the application scroll back to the top and click on the API Gateway you set up.
 
-    python -m worker
-
-And that's it! Have fun with the bot.
+  At the bottom of the page click on ``Details`` and copy the API endpoint into your Discord Application's
+  Interactions Endpoint URL so it can make use of it.
