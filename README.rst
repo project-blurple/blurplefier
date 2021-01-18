@@ -26,7 +26,7 @@ Deploying
 
 - In the function overview under ``Designer`` on the main page select ``Add trigger``.
 
-  Select ``API Gateway`` from the dropdown, create a new API and select ``Open`` in the security dropdown.
+  Select ``API Gateway`` from the dropdown, create a new HTTP API and select ``Open`` in the security dropdown.
 
   Back on the main page scroll down to Environment variables, click on ``edit`` and add your Discord
   Application's ID as ``APPLICATION_CLIENT_ID`` and its public key as ``APPLICATION_PUBLIC_KEY``.

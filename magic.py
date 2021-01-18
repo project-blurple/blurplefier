@@ -451,7 +451,7 @@ def convert_image(image, modifier, method, variations):
             filename = f'blurple.png'
 
     out.seek(0)
-    return out, filename
+    return filename, out.getvalue()
 
 
 def check_image(image, modifier, method):

@@ -3,10 +3,11 @@
 import base64
 import json
 import os
-import random
 
 import discord_interactions
 import requests
+
+import magic
 
 
 CLIENT_ID = os.environ['APPLICATION_CLIENT_ID']
@@ -28,6 +29,8 @@ ALLOWED_CHANNELS = {
         '559342069932359681',  # blurplefier -> bot-spam
     ],
 }
+
+SAD_EMOJI = '<a:ablobsadrain:620464068393828382>'
 
 
 class Image:
@@ -80,7 +83,7 @@ def send_response(interaction, *, data=None, image=None, followup=False):
     return requests.post(**kwargs)
 
 
-def handler(event, context):
+def inner_handler(event, context):
     data = event.get('body', '')
     encoded = event.get('isBase64Encoded', False)
 
@@ -93,12 +96,12 @@ def handler(event, context):
     timestamp = event['headers'].get('x-signature-timestamp')
 
     if not (signature and timestamp and discord_interactions.verify_key(data, signature, timestamp, PUBLIC_KEY)):
-        return Response(401, {'error': 'Request signature invalid.'}).to_lambda_response()
+        return Response(401, {'error': 'Request signature invalid.'})
 
     interaction = json.loads(data)
 
     if interaction['type'] == discord_interactions.InteractionType.PING:
-        return Response(200, {'type': discord_interactions.InteractionResponseType.PONG}).to_lambda_response()
+        return Response(200, {'type': discord_interactions.InteractionResponseType.PONG})
 
     guild_id = interaction['guild_id']
     channel_id = interaction['channel_id']
@@ -115,23 +118,56 @@ def handler(event, context):
             },
         }
 
-        return Response(200, data).to_lambda_response()
+        return Response(200, data)
 
     send_response(interaction, data={'type': discord_interactions.InteractionResponseType.ACKNOWLEDGE_WITH_SOURCE})
 
-    # TODO: Download user avatar or supplies image URL here, convert it and change it out from sample images
-    # These are just here to ensure sending the initial ACK and then the followup message + image works as intended
-    choices = (
-        'https://files.snowyluma.dev/Fv7Lxi.gif',
-        'https://files.snowyluma.dev/mkaDDE.jpg',
-        'https://files.snowyluma.dev/nzyJl5.jpg',
-        'https://files.snowyluma.dev/50ck33.png',
-    )
+    user = interaction['member']['user']
+    user_id = user['id']
 
-    url = random.choice(choices)
-    resp = requests.get(url=url)
+    if 'options' in interaction['data']:
+        # TODO: Other options
+        url = interaction['data']['options'][0]['value']
+    else:
+        avatar = user['avatar']
+        ext = 'gif' if avatar.startswith('a_') else 'png'
+        url = f'https://cdn.discordapp.com/avatars/{user_id}/{avatar}.{ext}?size=512'
 
-    data = {'content': 'Zeboat has to code the actual image conversion, so have a random image from me,,'}
-    send_response(interaction, data=data, image=Image(url[-10:], resp.content), followup=True)
+    try:
+        resp = requests.get(url)
+    except requests.exceptions.MissingSchema:
+        data = {'content': f'The supplied URL was invalid <@!{user_id}>! {SAD_EMOJI}'}
+        send_response(interaction, data=data,followup=True)
+        return
 
-    return Response(200).to_lambda_response()  # I'm not sure what we're supposed to return here,, but this works :)
+    if resp.status_code != 200:
+        data = {'content': f'I couldn\'t download your image <@!{user_id}>! {SAD_EMOJI}'}
+        send_response(interaction, data=data,followup=True)
+        return
+
+    if int(resp.headers.get('content-length', '0')) > 1024 ** 8:
+        data = {'content': f'Your image is too large (> 8MiB) <@!{user_id}>! {SAD_EMOJI}'}
+        send_response(interaction, data=data, followup=True)
+        return
+
+    try:
+        data = {'content': f'Your requested image is ready <@!{user_id}>!'}
+        image = Image(*magic.convert_image(resp.content, 'light', '--blurplefy', []))
+    except Exception:
+        image = None
+        data = {'content': f'I was unable to blurplefy your image <@!{user_id}>! {SAD_EMOJI}'}
+
+    resp = send_response(interaction, data=data, image=image, followup=True)
+
+    if 400 <= resp.status_code <= 599:
+        data = {'content': f'I couldn\'t upload your finished image <@!{user_id}>! {SAD_EMOJI}'}
+        send_response(interaction, data=data,followup=True)
+
+
+def handler(event, context):
+    response = inner_handler(event, context)
+
+    if response is None:
+        response = Response(200)
+
+    return response.to_lambda_response()
