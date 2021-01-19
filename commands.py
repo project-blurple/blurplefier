@@ -6,7 +6,7 @@ import requests
 GUILD_ID = input('guild id: ')
 
 APPLICATION_ID = input('application id: ')
-APPLICATION_TOKEN = 'bot ' + input('bot token: ')
+APPLICATION_TOKEN = 'Bot ' + input('bot token: ')
 
 URL = f'https://discord.com/api/v8/applications/{APPLICATION_ID}/guilds/{GUILD_ID}/commands'
 
