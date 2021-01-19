@@ -2,7 +2,9 @@
 
 import base64
 import json
+from logging import exception
 import os
+import traceback
 
 import discord_interactions
 import requests
@@ -122,47 +124,65 @@ def inner_handler(event, context):
 
     send_response(interaction, data={'type': discord_interactions.InteractionResponseType.ACKNOWLEDGE_WITH_SOURCE})
 
-    user = interaction['member']['user']
-    user_id = user['id']
-
-    if 'options' in interaction['data']:
-        # TODO: Other options
-        url = interaction['data']['options'][0]['value']
-    else:
+    try:
+        user = interaction['member']['user']
         avatar = user['avatar']
-        ext = 'gif' if avatar.startswith('a_') else 'png'
-        url = f'https://cdn.discordapp.com/avatars/{user_id}/{avatar}.{ext}?size=512'
+        user_id = user['id']
+        url = None
+        
 
-    try:
-        resp = requests.get(url)
-    except requests.exceptions.MissingSchema:
-        data = {'content': f'The supplied URL was invalid <@!{user_id}>! {SAD_EMOJI}'}
-        send_response(interaction, data=data,followup=True)
-        return
+        if interaction['data']['options'][0]['name'] == 'classic':
+            method = '--blurplefy'
+        else:
+            method = '--filter'
+        
+        variations = []
+        if 'options' in interaction['data']['options'][0]:
+            for option in interaction['data']['options'][0]['options']:
+                if option['name'] == 'url':
+                    url = option['value']
+                    continue
+                
+                to_add = option['value'].split()
+                for v in to_add:
+                    variations.append(v)
 
-    if resp.status_code != 200:
-        data = {'content': f'I couldn\'t download your image <@!{user_id}>! {SAD_EMOJI}'}
-        send_response(interaction, data=data,followup=True)
-        return
+        if url is None:
+            ext = 'gif' if avatar.startswith('a_') else 'png'
+            url = f'https://cdn.discordapp.com/avatars/{user_id}/{avatar}.{ext}?size=512'
 
-    if int(resp.headers.get('content-length', '0')) > 1024 ** 8:
-        data = {'content': f'Your image is too large (> 8MiB) <@!{user_id}>! {SAD_EMOJI}'}
-        send_response(interaction, data=data, followup=True)
-        return
+        try:
+            resp = requests.get(url, stream=True)
+        except requests.exceptions.MissingSchema:
+            data = {'content': f'The supplied URL was invalid <@!{user_id}>! {SAD_EMOJI}'}
+            send_response(interaction, data=data,followup=True)
+            return
 
-    try:
+        if resp.status_code != 200:
+            data = {'content': f'I couldn\'t download your image <@!{user_id}>! {SAD_EMOJI}'}
+            send_response(interaction, data=data,followup=True)
+            return
+
+        if int(resp.headers.get('content-length', '0')) > 1024 ** 2 * 8:
+            data = {'content': f'Your image is too large (> 8MiB) <@!{user_id}>! {SAD_EMOJI}'}
+            send_response(interaction, data=data, followup=True)
+            return
+
+        # try:
         data = {'content': f'Your requested image is ready <@!{user_id}>!'}
-        image = Image(*magic.convert_image(resp.content, 'light', '--blurplefy', []))
+        image = Image(*magic.convert_image(resp.content, 'light', method, variations))
+        # except Exception:
+        #     image = None
+        #     data = {'content': f'I was unable to blurplefy your image <@!{user_id}>! {SAD_EMOJI}'}
+        
+        resp = send_response(interaction, data=data, image=image, followup=True)
+
+        if 400 <= resp.status_code <= 599:
+            data = {'content': f'I couldn\'t upload your finished image <@!{user_id}>! {SAD_EMOJI}'}
+            send_response(interaction, data=data,followup=True)
     except Exception:
-        image = None
-        data = {'content': f'I was unable to blurplefy your image <@!{user_id}>! {SAD_EMOJI}'}
-
-    resp = send_response(interaction, data=data, image=image, followup=True)
-
-    if 400 <= resp.status_code <= 599:
-        data = {'content': f'I couldn\'t upload your finished image <@!{user_id}>! {SAD_EMOJI}'}
-        send_response(interaction, data=data,followup=True)
-
+        data = {'content': traceback.format_exc()}
+        send_response(interaction, data=data, followup=True)
 
 def handler(event, context):
     response = inner_handler(event, context)
