@@ -4,3 +4,4 @@ discord-interactions
 isort
 pillow
 requests
+pympler
