@@ -167,10 +167,10 @@ def inner_handler(event, context):
             send_response(interaction, data=data,followup=True)
             return
 
-        if int(resp.headers.get('content-length', '0')) > 1024 ** 2 * 8:
-            data = {'content': f'Your image is too large (> 8MiB) <@!{user_id}>! {SAD_EMOJI}'}
-            send_response(interaction, data=data, followup=True)
-            return
+        # if int(resp.headers.get('content-length', '0')) > 1024 ** 2 * 8:
+        #     data = {'content': f'Your image is too large (> 8MiB) <@!{user_id}>! {SAD_EMOJI}'}
+        #     send_response(interaction, data=data, followup=True)
+        #     return
 
         # try:
         data = {'content': f'Your requested image is ready <@!{user_id}>!'}
@@ -178,7 +178,6 @@ def inner_handler(event, context):
         # except Exception:
         #     image = None
         #     data = {'content': f'I was unable to blurplefy your image <@!{user_id}>! {SAD_EMOJI}'}
-        
         resp = send_response(interaction, data=data, image=image, followup=True)
 
         if 400 <= resp.status_code <= 599:

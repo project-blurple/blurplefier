@@ -3,12 +3,38 @@
 import io
 import logging
 import math
-
-from PIL import Image, ImageSequence
+from pympler import asizeof
+from PIL import Image, ImageSequence, GifImagePlugin
 
 
 log = logging.getLogger(__name__)
 
+import sys
+from types import ModuleType, FunctionType
+from gc import get_referents
+
+# Custom objects know their class.
+# Function objects seem to know way too much, including modules.
+# Exclude modules as well.
+BLACKLIST = type, ModuleType, FunctionType
+
+
+def getsize(obj):
+    """sum size of object & members."""
+    if isinstance(obj, BLACKLIST):
+        raise TypeError('getsize() does not take argument of type: '+ str(type(obj)))
+    seen_ids = set()
+    size = 0
+    objects = [obj]
+    while objects:
+        need_referents = []
+        for obj in objects:
+            if not isinstance(obj, BLACKLIST) and id(obj) not in seen_ids:
+                seen_ids.add(id(obj))
+                size += sys.getsizeof(obj)
+                need_referents.append(obj)
+        objects = get_referents(*need_referents)
+    return size
 
 # source: https://dev.to/enzoftware/how-to-build-amazing-image-filters-with-python-median-filter---sobel-filter---5h7
 def edge_antialiasing(img):
@@ -363,7 +389,22 @@ VARIATIONS = {
     'bg++dark-blurple-bg': (78, 93, 148, 255),
 }
 
-
+def writeImage(out, frames, filename="blurple.gif"):
+	# Instead of saving a series of complete images, this saves the deltas
+    for s in GifImagePlugin._get_global_header(frames[0], frames[0].info):
+        out.write(s)
+    for frame in frames:
+        dispose_extent = frame.dispose_extent
+        disposal_method = frame.disposal_method
+        include_color_table = frame.palette.palette != frame.global_palette.palette
+        frame = frame.crop(dispose_extent)
+        GifImagePlugin._write_frame_data(out, frame, dispose_extent[:2], {
+            'disposal': disposal_method,
+            'duration': frame.info["duration"],
+            'include_color_table': include_color_table,
+            'transparency': 255,
+            'loop': frame.info["loop"]
+        })
 def convert_image(image, modifier, method, variations):
     try:
         modifier_converter = dict(MODIFIERS[modifier])
@@ -378,6 +419,7 @@ def convert_image(image, modifier, method, variations):
     base_color_var, background_color, modifier_converter = variation_converter(variations, modifier_converter)
 
     with Image.open(io.BytesIO(image)) as img:
+        filename = None
         if img.format == "GIF":
             frames = []
             durations = []
@@ -390,7 +432,8 @@ def convert_image(image, modifier, method, variations):
 
             minimum = 256
             maximum = 0
-
+            count = 0
+            new_size = img.size
             for img_frame in ImageSequence.Iterator(img):
                 frame = img_frame.convert('LA')
 
@@ -399,15 +442,38 @@ def convert_image(image, modifier, method, variations):
 
                 if frame.getextrema()[0][1] > maximum:
                     maximum = frame.getextrema()[0][1]
-
+                
+                if img_frame.size[0] > new_size[0]:
+                    new_size[0] = img_frame.size[0]
+                    
+                if img_frame.size[1] > new_size[1]:
+                    new_size[1] = img_frame.size[1]
+                count += 1
             optimize = True
+            
+            if asizeof.asizeof(img)/1024 > 9:
+                width, height = new_size
+                ratio = 9/(asizeof.asizeof(img)/1024)
+                new_size = (int(width*ratio),int(height*ratio))
 
+            if count > 50:
+                width, height = new_size
+                ratio = 50/float(count)
+                new_size = (int(width*ratio),int(height*ratio))
+            
+            index = 0
+            palette = None
+            
             for frame in ImageSequence.Iterator(img):
-                new_img = Image.new("RGBA", (img.width, img.height))
-                disposals.append(frame.disposal_method)
+                print(index)
+                index += 1
+                disposals.append(frame.disposal_method if img.format == 'GIF' else frame.dispose_op)
                 durations.append(frame.info['duration'])
-                new_frame = method_converter(frame, modifier_converter, base_color_var, maximum, minimum)
-                new_img.paste(new_frame, (0, 0))
+                dispose_extent = frame.dispose_extent 
+                new_frame = Image.new("RGBA", new_size)
+                new_frame.paste(frame.resize(new_size, Image.ANTIALIAS))
+                new_img = Image.new("RGBA", new_size)
+                new_img.paste(method_converter(new_frame, modifier_converter, base_color_var, maximum, minimum), (0, 0))
                 if background_color is not None:
                     new_img = remove_alpha(new_img, background_color)
                 alpha = new_img.getchannel('A')
@@ -416,9 +482,20 @@ def convert_image(image, modifier, method, variations):
                 new_img = new_img.convert('RGB').convert('P', palette=Image.ADAPTIVE, colors=255)
                 mask = Image.eval(alpha, lambda a: 255 if a <= 128 else 0)
                 new_img.paste(255, mask=mask)
+                new_img.dispose_extent = (
+                    int(new_size[0]/frame.size[0]*frame.dispose_extent[0]),
+                    int(new_size[1]/frame.size[1]*frame.dispose_extent[1]),
+                    int(new_size[0]/frame.size[0]*frame.dispose_extent[2]),
+                    int(new_size[1]/frame.size[1]*frame.dispose_extent[3])
+                )
+                new_img.disposal_method = frame.disposal_method 
+                new_img.global_palette = frame.global_palette = frame.palette
+                new_img.info['duration'] = frame.info['duration']
+                new_img.info['loop'] = loop
                 frames.append(new_img)
 
             out = io.BytesIO()
+            
             try:
                 frames[0].save(
                     out,
@@ -438,14 +515,25 @@ def convert_image(image, modifier, method, variations):
             filename = f'blurple.gif'
 
         else:
+            
+            if asizeof.asizeof(img)/1024 > 9:
+                width, height = img.size
+                ratio = 9/(asizeof.asizeof(img)/1024)
+                img.thumbnail((int(width*ratio),int(height*ratio)), Image.ANTIALIAS)
+            print(f"Final:{asizeof.asizeof(img)/1024}")
+            print(asizeof.asizeof(img)/1024)
             img = img.convert('LA')
-
+            print(asizeof.asizeof(img)/1024)
+            
             minimum = img.getextrema()[0][0]
             maximum = img.getextrema()[0][1]
-
+            print(asizeof.asizeof(img)/1024)
             img = method_converter(img, modifier_converter, base_color_var, maximum, minimum)
             if background_color is not None:
                 img = remove_alpha(img, background_color)
+            print(asizeof.asizeof(img)/1024)
+            if img.tell() > 1024 ** 2 * 8:
+                raise RuntimeError(f'Final image too big!')
             out = io.BytesIO()
             img.save(out, format='png')
             filename = f'blurple.png'
@@ -494,3 +582,4 @@ def check_image(image, modifier, method):
     colors.append({'name': 'Non-Blurple', 'ratio': ratios[3]})
     data = {'passed': passed, 'colors': colors}
     return data
+
