@@ -30,6 +30,10 @@ ALLOWED_CHANNELS = {
     '559341262302347314': [
         '559342069932359681',  # blurplefier -> bot-spam
     ],
+    # Project Blurple
+    '412754940885467146' : [
+        '442725328130015244', # staff-lobby -> moderator-playground
+    ],
 }
 
 SAD_EMOJI = '<a:ablobsadrain:620464068393828382>'
