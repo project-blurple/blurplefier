@@ -35,3 +35,5 @@ Deploying
 
   At the bottom of the page click on ``Details`` and copy the API endpoint into your Discord Application's
   Interactions Endpoint URL so it can make use of it.
+
+- Now create the slash command by running ``python commands.py`` and you are all done!
