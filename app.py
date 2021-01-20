@@ -8,7 +8,7 @@ import traceback
 
 import discord_interactions
 import requests
-
+import time
 import magic
 
 
@@ -121,9 +121,9 @@ def inner_handler(event, context):
         }
 
         return Response(200, data)
-
+    time.sleep(2)
     send_response(interaction, data={'type': discord_interactions.InteractionResponseType.ACKNOWLEDGE_WITH_SOURCE})
-
+    
     try:
         user = interaction['member']['user']
         avatar = user['avatar']
