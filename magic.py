@@ -514,8 +514,89 @@ def convert_image(image, modifier, method, variations):
 
             filename = f'blurple.gif'
 
+        elif img.format == "PNG" and img.is_animated:
+            frames = []
+            durations = []
+            # disposals = []
+            blends = []
+            minimum = 256
+            maximum = 0
+            try:
+                loop = img.info['loop']
+            except KeyError:
+                loop = 1
+
+            count = 0
+            new_size = img.size
+            for img_frame in ImageSequence.Iterator(img):
+                frame = img_frame.convert('RGBA')
+
+                if frame.getextrema()[0][0] < minimum:
+                    minimum = frame.getextrema()[0][0]
+
+                if frame.getextrema()[0][1] > maximum:
+                    maximum = frame.getextrema()[0][1]
+                    
+                if img_frame.size[0] > new_size[0]:
+                    new_size[0] = img_frame.size[0]
+                        
+                if img_frame.size[1] > new_size[1]:
+                    new_size[1] = img_frame.size[1]
+                count += 1
+                
+            if asizeof.asizeof(img)/1024 > 9:
+                width, height = new_size
+                ratio = 9/(asizeof.asizeof(img)/1024)
+                new_size = (int(width*ratio),int(height*ratio))
+
+            if count > 50:
+                width, height = new_size
+                ratio = 50/float(count)
+                new_size = (int(width*ratio),int(height*ratio))
+                
+            index = 0
+                
+            for frame in ImageSequence.Iterator(img):
+                print(index)
+                index += 1
+                # disposals.append(frame.dispose_op)
+                durations.append(frame.info['duration'])
+                blends.append(frame.info['blend'])
+                new_frame = Image.new("RGBA", new_size)
+                new_frame.paste(frame.resize(new_size, Image.NEAREST))
+                new_img = Image.new("RGBA", new_size)
+                new_img.paste(method_converter(new_frame, modifier_converter, base_color_var, maximum, minimum), (0, 0))
+                if background_color is not None:
+                    new_img = remove_alpha(new_img, background_color)
+                new_img.global_palette = frame.global_palette = frame.palette
+                # new_img.dispose_op = frame.dispose_op
+                new_img.info['duration'] = frame.info['duration']
+                new_img.info['loop'] = loop
+                new_img.info['blend'] = frame.info['blend']
+                    
+                frames.append(new_img)
+
+            out = io.BytesIO()
+
+            try:
+                frames[0].save(
+                    'blurple.png',
+                    format='PNG',
+                    append_images=frames[1:],
+                    save_all=True,
+                    loop=loop,
+                    duration=durations,
+                    # disposal=disposals,
+                    blend=blends,
+                )
+            except TypeError as e:
+                log.exception()
+                raise RuntimeError('Invalid APNG.')
+
+            filename = f'blurple.png'
+
         else:
-            
+
             if asizeof.asizeof(img)/1024 > 9:
                 width, height = img.size
                 ratio = 9/(asizeof.asizeof(img)/1024)
