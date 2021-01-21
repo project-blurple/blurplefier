@@ -580,7 +580,7 @@ def convert_image(image, modifier, method, variations):
 
             try:
                 frames[0].save(
-                    'blurple.png',
+                    out,
                     format='PNG',
                     append_images=frames[1:],
                     save_all=True,
