@@ -117,7 +117,7 @@ def inner_handler(event, context):
         mentions = ' '.join(f'<#{x}>' for x in channel_ids) or 'other servers'
 
         data = {
-            'type': discord_interactions.InteractionResponseType.CHANNEL_MESSAGE,
+            'type': discord_interactions.InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             'data': {
                 'content': f'This command can only be used in {mentions}!',
                 'flags': discord_interactions.InteractionResponseFlags.EPHEMERAL,
@@ -126,7 +126,6 @@ def inner_handler(event, context):
 
         return Response(200, data)
     time.sleep(2)
-    send_response(interaction, data={'type': discord_interactions.InteractionResponseType.ACKNOWLEDGE_WITH_SOURCE})
     
     try:
         user = interaction['member']['user']
@@ -159,12 +158,12 @@ def inner_handler(event, context):
             resp = requests.get(url, stream=True)
         except requests.exceptions.MissingSchema:
             data = {'content': f'The supplied URL was invalid <@!{user_id}>! {SAD_EMOJI}'}
-            send_response(interaction, data=data,followup=True)
+            send_response(interaction, data=data)
             return
 
         if resp.status_code != 200:
             data = {'content': f'I couldn\'t download your image <@!{user_id}>! {SAD_EMOJI}'}
-            send_response(interaction, data=data,followup=True)
+            send_response(interaction, data=data)
             return
 
         # if int(resp.headers.get('content-length', '0')) > 1024 ** 2 * 8:
@@ -172,20 +171,20 @@ def inner_handler(event, context):
         #     send_response(interaction, data=data, followup=True)
         #     return
 
-        # try:
-        data = {'content': f'Your requested image is ready <@!{user_id}>!'}
-        image = Image(*magic.convert_image(resp.content, 'light', method, variations))
-        # except Exception:
-        #     image = None
-        #     data = {'content': f'I was unable to blurplefy your image <@!{user_id}>! {SAD_EMOJI}'}
-        resp = send_response(interaction, data=data, image=image, followup=True)
+        try:
+            data = {'content': f'Your requested image is ready <@!{user_id}>!'}
+            image = Image(*magic.convert_image(resp.content, 'light', method, variations))
+        except Exception:
+            image = None
+            data = {'content': f'I was unable to blurplefy your image <@!{user_id}>! {SAD_EMOJI}'}
+        resp = send_response(interaction, data=data, image=image)
 
         if 400 <= resp.status_code <= 599:
             data = {'content': f'I couldn\'t upload your finished image <@!{user_id}>! {SAD_EMOJI}'}
-            send_response(interaction, data=data,followup=True)
+            send_response(interaction, data=data)
     except Exception:
         data = {'content': traceback.format_exc()}
-        send_response(interaction, data=data, followup=True)
+        send_response(interaction, data=data)
 
 def handler(event, context):
     response = inner_handler(event, context)
