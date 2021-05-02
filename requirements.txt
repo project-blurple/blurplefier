@@ -1,4 +1,5 @@
 awslambdaric
+backblaze
 black
 discord-interactions
 isort
