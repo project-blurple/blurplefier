@@ -6,8 +6,6 @@ from logging import exception
 import os
 import traceback
 
-import backblaze
-import backblaze.settings
 import discord_interactions
 import requests
 import time
@@ -17,18 +15,12 @@ import magic
 CLIENT_ID = os.environ['APPLICATION_CLIENT_ID']
 PUBLIC_KEY = os.environ['APPLICATION_PUBLIC_KEY']
 
-B2_BUCKET_ID = os.environ['B2_BUCKET_ID']
-B2_APPLICATION_KEY = os.environ['B2_APPLICATION_KEY']
-B2_APPLICATION_KEY_ID = os.environ['B2_APPLICATION_KEY_ID']
-
-IMAGES_BASE_URL = os.environ['IMAGES_BASE_URL']
-
 # Please don't delete any of the test channels
 # Instead just add your own, your app won't be in the other guilds anyway
 ALLOWED_CHANNELS = {
     # Blob Emoji
     '272885620769161216': [
-        '411929226066001930',  # blob-development -> bot-spam
+        '411929226066001930',  # blob-development -> bot-spamz
     ],
     # Comet Observatory
     '380295555039100932': [
@@ -40,11 +32,19 @@ ALLOWED_CHANNELS = {
     ],
     # Project Blurple
     '412754940885467146': [
-        '442725328130015244',  # staff-lobby -> moderator-playground
+        '799271219592560660',  # blurple-playground -> blurplfier-1
+        '799271239557709864',  # blurple-playground -> blurplfier-2
+        # '442725328130015244', # staff-lobby -> moderator-playground
     ],
 }
 
 SAD_EMOJI = '<a:ablobsadrain:620464068393828382>'
+
+
+class Image:
+    def __init__(self, name, data):
+        self.name = name
+        self.data = data
 
 
 class Response:
@@ -62,6 +62,35 @@ class Response:
         }
 
         return data
+
+
+def send_response(interaction, *, data=None, image=None, followup=True):
+    interaction_id = interaction['id']
+    interaction_token = interaction['token']
+
+    kwargs = {
+        'headers': {
+            'user-agent': 'Blurplefier/2021.0 (+https://github.com/project-blurple/blurplefier)',
+        },
+    }
+
+    if image is None:
+        kwargs['json'] = data
+        kwargs['headers']['content-type'] = 'application/json'
+    else:
+        kwargs['files'] = {image.name: image.data}
+
+        if data is not None:
+            kwargs['data'] = {'payload_json': json.dumps(data)}
+
+    if followup:
+        kwargs['url'] = f'https://discord.com/api/webhooks/{CLIENT_ID}/{interaction_token}'
+    else:
+        kwargs['url'] = f'https://discord.com/api/v8/interactions/{interaction_id}/{interaction_token}/callback'
+
+    r = requests.post(**kwargs)
+    print(r.text)
+    return r
 
 
 def inner_handler(event, context):
@@ -101,127 +130,75 @@ def inner_handler(event, context):
 
         return Response(200, data)
 
-    user = interaction['member']['user']
-    avatar = user['avatar']
-    user_id = user['id']
-    url = None
-
-    if interaction['data']['options'][0]['name'] == 'classic':
-        method = '--blurplefy'
-    else:
-        method = '--filter'
-
-    variations = []
-    if 'options' in interaction['data']['options'][0]:
-        for option in interaction['data']['options'][0]['options']:
-            if option['name'] == 'url':
-                url = option['value']
-                continue
-
-            to_add = option['value'].split()
-            for v in to_add:
-                variations.append(v)
-
-    if url is None:
-        ext = 'gif' if avatar.startswith('a_') else 'png'
-        url = f'https://cdn.discordapp.com/avatars/{user_id}/{avatar}.{ext}?size=512'
-
-    try:
-        resp = requests.get(url, stream=True)
-    except requests.exceptions.MissingSchema:
-        data = {
-            'type': discord_interactions.InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            'data': {'content': f'The supplied URL was invalid <@!{user_id}>! {SAD_EMOJI}'},
-        }
-        return Response(200, data)
-    except requests.exceptions.RequestException:
-        data = {
-            'type': discord_interactions.InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            'data': {'content': f'I was unable to download your image <@!{user_id}>! {SAD_EMOJI}'},
-        }
-        return Response(200, data)
-
-    if resp.status_code != 200:
-        data = {
-            'type': discord_interactions.InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            'data': {'content': f'I couldn\'t download your image <@!{user_id}>! {SAD_EMOJI}'},
-        }
-        return Response(200, data)
-
-    # if int(resp.headers.get('content-length', '0')) > 1024 ** 2 * 8:
-    #     data = {'content': f'Your image is too large (> 8MiB) <@!{user_id}>! {SAD_EMOJI}'}
-    #     send_response(interaction, data=data, followup=True)
-    #     return
-
-    try:
-        name, data = magic.convert_image(resp.content, 'light', method, variations)
-    except Exception:
-        data = {
-            'type': discord_interactions.InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            'data': {'content': f'I was unable to blurplefy your image <@!{user_id}>! {SAD_EMOJI}'},
-        }
-        return Response(200, data)
-
-    client = backblaze.Blocking(key=B2_APPLICATION_KEY, key_id=B2_APPLICATION_KEY_ID)
-
-    try:
-        client.authorize()
-    except backblaze.exceptions.UnAuthorized:
-        data = {
-            'type': discord_interactions.InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            'data': {'content': 'Unable to upload image, invalid credentials provided.'},
-        }
-        return Response(200, data)
-
-    bucket = client.bucket(bucket_id=B2_BUCKET_ID)
-
-    name = f'{user_id}/{int(time.time())}/{name}'
-    settings = backblaze.settings.UploadSettings(name=name)
-
-    try:
-        bucket.upload(settings, data)
-    except backblaze.exceptions.BackblazeException:
-        data = {
-            'type': discord_interactions.InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            'data': {
-                'content': f'I was unable to upload your image, please try again later <@!{user_id}>! {SAD_EMOJI}'
-            },
-        }
-        return Response(200, data)
-
-    try:
-        client.close()
-    except Exception:
-        pass
-
     data = {
         'type': discord_interactions.InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        'data': {
-            'content': (
-                f'Your image has been converted <@!{user_id}>!\n'
-                f'**The image URL will expire, download it to keep it!**\n\n{IMAGES_BASE_URL}/{name}'
-            )
-        },
+        'data': {'content': 'Request accepted. Blurplefying...'},
     }
+    send_response(interaction, data=data, followup=False)
 
-    return Response(200, data)
+    try:
+        user = interaction['member']['user']
+        avatar = user['avatar']
+        user_id = user['id']
+        url = None
+
+        if interaction['data']['options'][0]['name'] == 'classic':
+            method = '--blurplefy'
+        else:
+            method = '--filter'
+
+        variations = []
+        if 'options' in interaction['data']['options'][0]:
+            for option in interaction['data']['options'][0]['options']:
+                if option['name'] == 'url':
+                    url = option['value']
+                    continue
+
+                to_add = option['value'].split()
+                for v in to_add:
+                    variations.append(v)
+
+        if url is None:
+            ext = 'gif' if avatar.startswith('a_') else 'png'
+            url = f'https://cdn.discordapp.com/avatars/{user_id}/{avatar}.{ext}?size=512'
+
+        try:
+            resp = requests.get(url, stream=True)
+        except requests.exceptions.MissingSchema:
+            data = {'content': f'The supplied URL was invalid <@!{user_id}>! {SAD_EMOJI}'}
+            send_response(interaction, data=data, followup=True)
+            return
+
+        if resp.status_code != 200:
+            data = {'content': f'I couldn\'t download your image <@!{user_id}>! {SAD_EMOJI}'}
+            send_response(interaction, data=data, followup=True)
+            return
+
+        # if int(resp.headers.get('content-length', '0')) > 1024 ** 2 * 8:
+        #     data = {'content': f'Your image is too large (> 8MiB) <@!{user_id}>! {SAD_EMOJI}'}
+        #     send_response(interaction, data=data, followup=True)
+        #     return
+
+        # try:
+        data = {'content': f'Your requested image is ready <@!{user_id}>!'}
+        image = Image(*magic.convert_image(resp.content, 'light', method, variations))
+        # except Exception:
+        #     image = None
+        #     data = {'content': f'I was unable to blurplefy your image <@!{user_id}>! {SAD_EMOJI}'}
+        resp = send_response(interaction, data=data, image=image, followup=True)
+
+        if 400 <= resp.status_code <= 599:
+            data = {'content': f'I couldn\'t upload your finished image <@!{user_id}>! {SAD_EMOJI}'}
+            send_response(interaction, data=data, followup=True)
+    except Exception:
+        data = {'content': traceback.format_exc()}
+        send_response(interaction, data=data, followup=True)
 
 
 def handler(event, context):
-    return inner_handler(event, context).to_lambda_response()
+    response = inner_handler(event, context)
 
+    if response is None:
+        response = Response(200)
 
-def test_handler(event, context):
-    try:
-        return inner_handler(event, context).to_lambda_response()
-    except Exception as e:
-        import traceback
-
-        data = {
-            'type': discord_interactions.InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            'data': {
-                'content': traceback.format_exc(),
-            },
-        }
-
-        return Response(200, data).to_lambda_response()
+    return response.to_lambda_response()
