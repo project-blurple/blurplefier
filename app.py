@@ -159,8 +159,13 @@ def inner_handler(event, context):
                     variations.append(v)
 
         if url is None:
+            if not avatar:
+                data = {'content': f'<@!{user_id}> You need an avatar before you can blurplefy! {SAD_EMOJI}'}
+                send_response(interaction, data=data, followup=True)    
+                return
             ext = 'gif' if avatar.startswith('a_') else 'png'
             url = f'https://cdn.discordapp.com/avatars/{user_id}/{avatar}.{ext}?size=512'
+            
 
         try:
             resp = requests.get(url, stream=True)
