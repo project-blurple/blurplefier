@@ -2,13 +2,13 @@
 
 import base64
 import json
-from logging import exception
 import os
 import traceback
+from typing import Any, Dict
 
 import discord_interactions
 import requests
-import time
+
 import magic
 
 
@@ -68,7 +68,7 @@ def send_response(interaction, *, data=None, image=None, followup=True):
     interaction_id = interaction['id']
     interaction_token = interaction['token']
 
-    kwargs = {
+    kwargs: Dict[str, Any] = {
         'headers': {
             'user-agent': 'Blurplefier/2021.0 (+https://github.com/project-blurple/blurplefier)',
         },
@@ -117,7 +117,7 @@ def inner_handler(event, context):
     channel_id = interaction['channel_id']
 
     if channel_id not in ALLOWED_CHANNELS.get(guild_id, []):
-        channel_ids = ALLOWED_CHANNELS.get(guild_id)
+        channel_ids = ALLOWED_CHANNELS.get(guild_id, [])
         mentions = ' '.join(f'<#{x}>' for x in channel_ids) or 'other servers'
 
         data = {
@@ -136,6 +136,9 @@ def inner_handler(event, context):
     }
     send_response(interaction, data=data, followup=False)
 
+    # Dict[Snowflake, Attachment]
+    attachments = interaction['data'].get('resolved', {}).get('attachments', {})
+
     try:
         user = interaction['member']['user']
         avatar = user['avatar']
@@ -150,8 +153,9 @@ def inner_handler(event, context):
         variations = []
         if 'options' in interaction['data']['options'][0]:
             for option in interaction['data']['options'][0]['options']:
-                if option['name'] == 'url':
-                    url = option['value']
+                if option['name'] == 'image':
+                    attachment_id = option['value']
+                    url = attachments[attachment_id]['url']
                     continue
 
                 to_add = option['value'].split()
@@ -161,11 +165,10 @@ def inner_handler(event, context):
         if url is None:
             if not avatar:
                 data = {'content': f'<@!{user_id}> You need an avatar before you can blurplefy! {SAD_EMOJI}'}
-                send_response(interaction, data=data, followup=True)    
+                send_response(interaction, data=data, followup=True)
                 return
             ext = 'gif' if avatar.startswith('a_') else 'png'
             url = f'https://cdn.discordapp.com/avatars/{user_id}/{avatar}.{ext}?size=512'
-            
 
         try:
             resp = requests.get(url, stream=True)
@@ -179,7 +182,7 @@ def inner_handler(event, context):
             send_response(interaction, data=data, followup=True)
             return
 
-        if int(resp.headers.get('content-length', '0')) > 1024 ** 2 * 8:
+        if int(resp.headers.get('content-length', '0')) > 1024**2 * 8:
             data = {'content': f'Your image is too large (> 8MiB) <@!{user_id}>! {SAD_EMOJI}'}
             send_response(interaction, data=data, followup=True)
             return
@@ -189,7 +192,9 @@ def inner_handler(event, context):
             image = Image(*magic.convert_image(resp.content, 'light', method, variations))
         except Exception:
             image = None
-            data = {'content': f'I was unable to blurplefy your image <@!{user_id}>! {SAD_EMOJI}\nPlease try a different image.'}
+            data = {
+                'content': f'I was unable to blurplefy your image <@!{user_id}>! {SAD_EMOJI}\nPlease try a different image.'
+            }
         resp = send_response(interaction, data=data, image=image, followup=True)
 
         if 400 <= resp.status_code <= 599:
