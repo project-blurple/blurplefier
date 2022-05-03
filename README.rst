@@ -14,7 +14,8 @@ Deploying
 - Authenticate Docker so it can push images to an ECR registry:
 
   https://aws.amazon.com/ecr
-  https://docs.aws.amazon.com/lambda/latest/dg/getting-started-create-function.html#gettingstarted-create-upload
+
+  https://docs.aws.amazon.com/lambda/latest/dg/images-create.html#images-upload
 
 - Set up or update an existing Lambda Function to use the pushed image:
 
