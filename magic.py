@@ -3,15 +3,17 @@
 import io
 import logging
 import math
+
+from PIL import GifImagePlugin, Image, ImageSequence
 from pympler import asizeof
-from PIL import Image, ImageSequence, GifImagePlugin
 
 
 log = logging.getLogger(__name__)
 
 import sys
-from types import ModuleType, FunctionType
 from gc import get_referents
+from types import FunctionType, ModuleType
+
 
 # Custom objects know their class.
 # Function objects seem to know way too much, including modules.
@@ -150,8 +152,7 @@ def f(x, n, d, m, l):
 
 
 def light(x):
-    return tuple(f(x, i, (78, 93, 148), (0.641, 0.716, 1.262), (255, 255, 255)) for i in range(3))
-
+    return tuple(f(x, i, (69, 79, 191), (0.641, 0.716, 1.262), (255, 255, 255)) for i in range(3))
 
 def dark(x):
     return tuple(f(x, i, (35, 39, 42), (1.064, 1.074, 1.162), (114, 137, 218)) for i in range(3))
@@ -362,7 +363,7 @@ def color_ratios(img, colors):
 MODIFIERS = {
     'light': {
         'func': light,
-        'colors': [(78, 93, 148), (114, 137, 218), (255, 255, 255)],
+        'colors': [(69, 79, 191), (88, 101, 242), (255, 255, 255)],
         'color_names': ['Dark Blurple', 'Blurple', 'White'],
     }
 }
@@ -386,8 +387,8 @@ VARIATIONS = {
     'method++invert': invert_colors,
     'method++shift': shift_colors,
     'bg++white-bg': (255, 255, 255, 255),
-    'bg++blurple-bg': (114, 137, 218, 255),
-    'bg++dark-blurple-bg': (78, 93, 148, 255),
+    'bg++blurple-bg': (88, 101, 242, 255),
+    'bg++dark-blurple-bg': (69, 79, 191, 255),
 }
 
 
@@ -622,7 +623,7 @@ def convert_image(image, modifier, method, variations):
             if background_color is not None:
                 img = remove_alpha(img, background_color)
             print(asizeof.asizeof(img) / 1024)
-            if img.tell() > 1024 ** 2 * 8:
+            if img.tell() > 1024**2 * 8:
                 raise RuntimeError(f'Final image too big!')
             out = io.BytesIO()
             img.save(out, format='png')
