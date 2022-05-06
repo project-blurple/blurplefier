@@ -15,6 +15,8 @@ import magic
 CLIENT_ID = os.environ['APPLICATION_CLIENT_ID']
 PUBLIC_KEY = os.environ['APPLICATION_PUBLIC_KEY']
 
+DEBUG = os.environ.get('DEBUG')
+
 # Please don't delete any of the test channels
 # Instead just add your own, your app won't be in the other guilds anyway
 ALLOWED_CHANNELS = {
@@ -190,11 +192,23 @@ def inner_handler(event, context):
         try:
             data = {'content': f'Your requested image is ready <@!{user_id}>!'}
             image = Image(*magic.convert_image(resp.content, 'light', method, variations))
-        except Exception:
+        except magic.InvalidImageFormat as error:
+            image = None
+
+            if error.format is None:
+                detail = 'Invalid image format given.'
+            else:
+                detail = f'{error.format.title()} is not a supported image format.'
+
+            data = {'content': f'{detail} Please supply a PNG, JPG, GIF, or WEBP image instead.'}
+        except Exception as error:
             image = None
             data = {
                 'content': f'I was unable to blurplefy your image <@!{user_id}>! {SAD_EMOJI}\nPlease try a different image.'
             }
+
+            if DEBUG:
+                data['content'] += f'\n{error}'
         resp = send_response(interaction, data=data, image=image, followup=True)
 
         if 400 <= resp.status_code <= 599:
