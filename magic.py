@@ -238,9 +238,9 @@ def blurple_filter(img, modifier, variation, maximum, minimum):
     img = img.convert('LA')
     pixels = img.getdata()
     img = img.convert('RGBA')
-    results = [modifier['func']((x - minimum) * 255 / (255 - minimum)) if x >= minimum else 0 for x in range(256)]
+    results = [modifier['func']((x - minimum) * 255 / (255 - minimum)) if x >= minimum else (0,0,0) for x in range(256)]
 
-    img.putdata((*map(lambda x: results[x[0]] + (x[1],), pixels),))
+    img.putdata((*map(lambda x: (*results[x[0]], x[1]), pixels),))
     return clean_alpha(img)
 
 
@@ -249,10 +249,10 @@ def blurplefy(img, modifier, variation, maximum, minimum):
     pixels = img.getdata()
     img = img.convert('RGBA')
     results = [
-        colorify((x - minimum) / (maximum - minimum), modifier['colors'], variation) if x >= minimum else 0
+        colorify((x - minimum) / (maximum - minimum), modifier['colors'], variation) if x >= minimum else (0,0,0)
         for x in range(256)
     ]
-    img.putdata((*map(lambda x: results[x[0]] + (x[1],), pixels),))
+    img.putdata((*map(lambda x: (*results[x[0]],x[1]), pixels),))
     return clean_alpha(img)
 
 
@@ -457,7 +457,7 @@ def convert_image(image, modifier, method, variations):
         minimum = 256
         maximum = 0
         count = 0
-        new_size = img.size
+        new_size = list(img.size)
         for img_frame in ImageSequence.Iterator(img):
             frame = img_frame.convert('LA')
 
@@ -475,9 +475,9 @@ def convert_image(image, modifier, method, variations):
             count += 1
         optimize = True
 
-        if asizeof.asizeof(img) / 1024 > 9:
+        if asizeof.asizeof(img) / (1024**2) > 9:
             width, height = new_size
-            ratio = 9 / (asizeof.asizeof(img) / 1024)
+            ratio = 9 / (asizeof.asizeof(img) / (1024**2))
             new_size = (int(width * ratio), int(height * ratio))
 
         if count > 50:
@@ -494,10 +494,8 @@ def convert_image(image, modifier, method, variations):
             disposals.append(frame.disposal_method if img.format == 'GIF' else frame.dispose_op)
             durations.append(frame.info['duration'])
             dispose_extent = frame.dispose_extent
-            new_frame = Image.new("RGBA", new_size)
-            new_frame.paste(frame.resize(new_size, Image.ANTIALIAS))
-            new_img = Image.new("RGBA", new_size)
-            new_img.paste(method_converter(new_frame, modifier_converter, base_color_var, maximum, minimum), (0, 0))
+            new_img = Image.new("RGBA", tuple(new_size))
+            new_img.paste(method_converter(frame.convert('LA').resize(tuple(new_size), Image.ANTIALIAS), modifier_converter, base_color_var, maximum, minimum), (0, 0))
             if background_color is not None:
                 new_img = remove_alpha(new_img, background_color)
             alpha = new_img.getchannel('A')
@@ -551,7 +549,7 @@ def convert_image(image, modifier, method, variations):
             loop = 1
 
         count = 0
-        new_size = img.size
+        new_size = list(img.size)
         for img_frame in ImageSequence.Iterator(img):
             frame = img_frame.convert('RGBA')
 
@@ -568,9 +566,9 @@ def convert_image(image, modifier, method, variations):
                 new_size[1] = img_frame.size[1]
             count += 1
 
-        if asizeof.asizeof(img) / 1024 > 9:
+        if asizeof.asizeof(img) / 1024**2 > 9:
             width, height = new_size
-            ratio = 9 / (asizeof.asizeof(img) / 1024)
+            ratio = 9 / (asizeof.asizeof(img) / 1024**2)
             new_size = (int(width * ratio), int(height * ratio))
 
         if count > 50:
@@ -586,10 +584,8 @@ def convert_image(image, modifier, method, variations):
             # disposals.append(frame.dispose_op)
             durations.append(frame.info['duration'])
             blends.append(frame.info['blend'])
-            new_frame = Image.new("RGBA", new_size)
-            new_frame.paste(frame.resize(new_size, Image.NEAREST))
-            new_img = Image.new("RGBA", new_size)
-            new_img.paste(method_converter(new_frame, modifier_converter, base_color_var, maximum, minimum), (0, 0))
+            new_img = Image.new("RGBA", tuple(new_size))
+            new_img.paste(method_converter(frame.convert('LA').resize(tuple(new_size), Image.ANTIALIAS), modifier_converter, base_color_var, maximum, minimum), (0, 0))
             if background_color is not None:
                 new_img = remove_alpha(new_img, background_color)
             new_img.global_palette = frame.global_palette = frame.palette
@@ -620,23 +616,21 @@ def convert_image(image, modifier, method, variations):
         filename = f'blurple.png'
 
     elif img.format in ('PNG', 'JPG', 'JPEG', 'WEBP'):
-
-        if asizeof.asizeof(img) / 1024 > 9:
-            width, height = img.size
-            ratio = 9 / (asizeof.asizeof(img) / 1024)
-            img.thumbnail((int(width * ratio), int(height * ratio)), Image.ANTIALIAS)
-        print(f"Final:{asizeof.asizeof(img)/1024}")
-        print(asizeof.asizeof(img) / 1024)
-        img = img.convert('LA')
-        print(asizeof.asizeof(img) / 1024)
+        new_size = list(img.size)
+        if asizeof.asizeof(img) / 1024**2 > 9:
+            width, height = new_size
+            ratio = 9 / (asizeof.asizeof(img) / 1024**2)
+            new_size = (int(width * ratio), int(height * ratio))
+        img = img.convert('LA').resize(tuple(new_size), Image.ANTIALIAS)
+        
 
         minimum = img.getextrema()[0][0]
         maximum = img.getextrema()[0][1]
-        print(asizeof.asizeof(img) / 1024)
+        
         img = method_converter(img, modifier_converter, base_color_var, maximum, minimum)
         if background_color is not None:
             img = remove_alpha(img, background_color)
-        print(asizeof.asizeof(img) / 1024)
+        
         if img.tell() > 1024**2 * 8:
             raise RuntimeError(f'Final image too big!')
         out = io.BytesIO()
