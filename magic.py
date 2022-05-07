@@ -159,7 +159,7 @@ def f(x, n, d, m, l):
 
 
 def light(x):
-    return tuple(f(x, i, (69, 79, 191), (0.641, 0.716, 1.262), (255, 255, 255)) for i in range(3))
+    return tuple(f(x, i, (69, 79, 191), (0.518,0.556,1.67), (255, 255, 255)) for i in range(3))
 
 
 def dark(x):
