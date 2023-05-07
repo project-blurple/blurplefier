@@ -104,6 +104,8 @@ def inner_handler(event, context):
     else:
         data = base64.b64decode(data)
 
+    event['headers'] = event.get('headers', {})
+
     signature = event['headers'].get('x-signature-ed25519')
     timestamp = event['headers'].get('x-signature-timestamp')
 
