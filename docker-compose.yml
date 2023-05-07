@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  bot:
+    build: .
+    ports:
+      - "127.0.0.1:13245:8080"
+    environment:
+      - "APPLICATION_CLIENT_ID=${APPLICATION_CLIENT_ID}"
+      - "APPLICATION_PUBLIC_KEY=${APPLICATION_PUBLIC_KEY}"
+      - "DEBUG=${DEBUG}"
